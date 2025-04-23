@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>پنل ادمین</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <button class="logout-btn" onclick="window.location='/logout'">خروج</button>
+  <div id="adminApp">
+    <h2>پنل مدیریت کاربران</h2>
+    <input v-model="search" @input="fetchUsers" placeholder="جستجو…" class="search-input">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>ردیف</th><th>نام</th><th>نام‌خانوادگی</th>
+          <th>موبایل</th><th>کد ملی</th><th>ایمیل</th><th>فعال؟</th><th>عملیات</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(user, idx) in users" :key="user.id">
+          <td>{{ idx+1 }}</td>
+          <td><input v-model="user.firstName"></td>
+          <td><input v-model="user.lastName"></td>
+          <td><input v-model="user.phoneNumber"></td>
+          <td><input v-model="user.nationalId"></td>
+          <td><input v-model="user.email"></td>
+          <td><input type="checkbox" v-model="user.isActive"></td>
+          <td><button class="primary" @click="updateUser(user)">ذخیره</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="error" v-if="error">{{ error }}</p>
+  </div>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

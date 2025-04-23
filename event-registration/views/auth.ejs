@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>ثبت‌نام / ورود</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div v-if="slide===0" class="slide">
+      <h2>سلام! چه کاری می‌خوای انجام بدی؟</h2>
+      <button class="primary" @click="selectMode('register')">ثبت‌نام جدید</button>
+      <button class="primary" @click="selectMode('login')">ورود</button>
+    </div>
+
+    <transition name="slide" mode="out-in">
+      <div v-if="mode==='register' && slide>0 && slide<5" class="slide" :key="slide">
+        <h3>مرحله {{slide}} از 4</h3>
+        <div v-if="slide===1">
+          <label>نام:</label><input v-model="firstName" type="text">
+          <label>نام خانوادگی:</label><input v-model="lastName" type="text">
+        </div>
+        <div v-if="slide===2">
+          <label>شماره موبایل:</label><input v-model="phoneNumber" type="text">
+          <label>کد ملی:</label><input v-model="nationalId" type="text">
+          <label>ایمیل:</label><input v-model="email" type="email">
+        </div>
+        <div v-if="slide===3">
+          <p>کد ۶ رقمی ارسال شده به ایمیل:</p>
+          <input v-model="code" type="text">
+        </div>
+        <div v-if="slide===4">
+          <label>رمز عبور:</label><input v-model="password" type="password">
+          <label>تکرار رمز:</label><input v-model="password2" type="password">
+        </div>
+        <div>
+          <button class="secondary" @click="prev" :disabled="slide===1">قبلی</button>
+          <button class="primary" @click="next" :disabled="!canNext">{{ slide<4 ? 'بعدی' : 'ثبت‌نام' }}</button>
+        </div>
+        <div class="progress-bar"><div class="progress" :style="{width: (slide-1)/4*100+'%'}"></div></div>
+        <p class="error" v-if="error">{{ error }}</p>
+      </div>
+
+      <div v-if="mode==='register' && slide===5" class="slide" key="done">
+        <h3>تبریک! ثبت‌نام با موفقیت انجام شد 🎉</h3>
+        <button class="primary" @click="goToLogin">ورود</button>
+      </div>
+
+      <div v-if="mode==='login' && slide===1" class="slide" key="login">
+        <h3>ورود به حساب</h3>
+        <label>شماره موبایل:</label><input v-model="phoneNumber" type="text">
+        <label>رمز عبور:</label><input v-model="password" type="password">
+        <div>
+          <button class="secondary" disabled>قبلی</button>
+          <button class="primary" @click="login" :disabled="!phoneNumber||!password">ورود</button>
+        </div>
+        <p class="error" v-if="error">{{ error }}</p>
+      </div>
+    </transition>
+  </div>
+  <script src="/js/auth.js"></script>
+</body>
+</html>
