@@ -22,16 +22,44 @@ exports.registerStep1 = (req, res) => {
 exports.registerStep2 = async (req, res) => {
   const { phoneNumber, nationalId, email } = req.body;
   req.session.regData = { ...req.session.regData, phoneNumber, nationalId, email };
+
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  req.session.verify = { code, expires: Date.now() + 10*60*1000 };
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: 'کد تأیید ثبت‌نام',
-    text: `کد تأیید شما: ${code}`
-  });
-  res.json({ success: true });
+  req.session.verify = { code, expires: Date.now() + 10 * 60 * 1000 };
+
+  const htmlContent = `
+    <div style="font-family:Arial, sans-serif; font-size:15px; color:#333;">
+      <p>Hello,</p>
+      <p>Your registration verification code is:</p>
+      <h1 style="font-size:36px; color:#2c3e50; letter-spacing:4px;">${code}</h1>
+      <p>This code will expire in <strong>10 minutes</strong>.</p>
+      <br>
+      <p style="font-size:12px; color:#777;">
+        If you did not request this code, please ignore this message.
+      </p>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: `"Ligauk Registration System" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Your Verification Code',
+      text: `Your verification code is: ${code}\nIt will expire in 10 minutes.`,
+      html: htmlContent,
+      headers: {
+        'X-Priority': '3',
+        'X-Mailer': 'NodeMailer'
+      }
+    });
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('Email send error:', err);
+    res.status(500).json({ success: false, message: 'Failed to send email' });
+  }
 };
+
 
 // مرحله ۳
 exports.verifyCode = (req, res) => {
