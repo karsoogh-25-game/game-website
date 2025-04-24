@@ -15,8 +15,9 @@ const transporter = nodemailer.createTransport({
 // مرحله ۱
 exports.registerStep1 = (req, res) => {
   const { firstName, lastName } = req.body;
-  if (!firstName || !lastName)
-    return res.status(400).json({ success:false, message:'نام و نام‌خانوادگی الزامی است' });
+  if (!firstName || !lastName) {
+    return res.status(400).json({ success: false, message: 'نام و نام‌خانوادگی الزامی است' });
+  }
   req.session.regData = { firstName, lastName };
   res.json({ success: true });
 };
@@ -24,27 +25,34 @@ exports.registerStep1 = (req, res) => {
 // مرحله ۲
 exports.registerStep2 = async (req, res) => {
   const { phoneNumber, nationalId, email } = req.body;
-  if (!phoneNumber || !nationalId || !email)
-    return res.status(400).json({ success:false, message:'تمام فیلدها الزامی است' });
-  if (!/^09\d{9}$/.test(phoneNumber))
-    return res.status(400).json({ success:false, message:'شماره موبایل نامعتبر است' });
-  if (!/^\d{10}$/.test(nationalId))
-    return res.status(400).json({ success:false, message:'کد ملی باید ۱۰ رقم باشد' });
-  if (!/^\S+@\S+\.\S+$/.test(email))
-    return res.status(400).json({ success:false, message:'فرمت ایمیل صحیح نیست' });
+  if (!phoneNumber || !nationalId || !email) {
+    return res.status(400).json({ success: false, message: 'تمام فیلدها الزامی است' });
+  }
+  if (!/^09\d{9}$/.test(phoneNumber)) {
+    return res.status(400).json({ success: false, message: 'شماره موبایل نامعتبر است' });
+  }
+  if (!/^\d{10}$/.test(nationalId)) {
+    return res.status(400).json({ success: false, message: 'کد ملی باید ۱۰ رقم باشد' });
+  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    return res.status(400).json({ success: false, message: 'فرمت ایمیل صحیح نیست' });
+  }
 
-  // تکراری نبودن
-  const exists = await User.findOne({ where:{
-    [Op.or]: [{ phoneNumber },{ nationalId },{ email }]
-  }});
-  if (exists)
-    return res.status(400).json({ success:false, message:'این اطلاعات قبلاً ثبت شده' });
+  // یکتایی هر فیلد
+  if (await User.findOne({ where: { phoneNumber } })) {
+    return res.status(400).json({ success: false, message: 'این شماره موبایل قبلاً ثبت شده' });
+  }
+  if (await User.findOne({ where: { nationalId } })) {
+    return res.status(400).json({ success: false, message: 'این کد ملی قبلاً ثبت شده' });
+  }
+  if (await User.findOne({ where: { email } })) {
+    return res.status(400).json({ success: false, message: 'این ایمیل قبلاً ثبت شده' });
+  }
 
   req.session.regData = { ...req.session.regData, phoneNumber, nationalId, email };
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  req.session.verify = { code, expires: Date.now() + 10*60*1000 };
+  req.session.verify = { code, expires: Date.now() + 10 * 60 * 1000 };
 
-  // محتوا HTML ایمیل
   const htmlContent = `
     <div style="font-family:Vazir,sans-serif; font-size:15px; color:#333;">
       <p>سلام!</p>
@@ -57,6 +65,7 @@ exports.registerStep2 = async (req, res) => {
       </p>
     </div>
   `;
+
   try {
     await transporter.sendMail({
       from: `"Ligauk Registration" <${process.env.EMAIL_USER}>`,
@@ -68,7 +77,7 @@ exports.registerStep2 = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Email error:', err);
-    res.status(500).json({ success:false, message:'ارسال ایمیل ناموفق' });
+    res.status(500).json({ success: false, message: 'ارسال ایمیل ناموفق' });
   }
 };
 
@@ -76,38 +85,46 @@ exports.registerStep2 = async (req, res) => {
 exports.verifyCode = (req, res) => {
   const { code } = req.body;
   const v = req.session.verify || {};
-  if (v.code===code && Date.now()<v.expires) return res.json({ success:true });
-  res.status(400).json({ success:false, message:'کد نادرست یا منقضی‌شده' });
+  if (v.code === code && Date.now() < v.expires) {
+    return res.json({ success: true });
+  }
+  res.status(400).json({ success: false, message: 'کد نادرست یا منقضی‌شده' });
 };
 
 // مرحله ۴
 exports.registerSetPassword = async (req, res) => {
   const { password } = req.body;
-  if (!/^(?=.*\d)[A-Za-z\d]{6,}$/.test(password))
-    return res.status(400).json({ success:false, message:'رمز باید حداقل ۶ حرف و شامل عدد باشد' });
+  if (!/^(?=.*\d)[A-Za-z\d]{6,}$/.test(password)) {
+    return res.status(400).json({ success: false, message: 'رمز باید حداقل ۶ حرف و شامل عدد باشد' });
+  }
   try {
     await User.create({ ...req.session.regData, password });
-    res.json({ success:true });
-  } catch {
-    res.status(500).json({ success:false, message:'خطا در ایجاد کاربر' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'خطا در ایجاد کاربر' });
   }
 };
 
 // ورود
 exports.login = async (req, res) => {
   const { phoneNumber, password } = req.body;
-  const admin = await Admin.findOne({ where:{ phoneNumber } });
+  const admin = await Admin.findOne({ where: { phoneNumber } });
   if (admin && await admin.validPassword(password)) {
     req.session.adminId = admin.id;
-    return res.json({ success:true, isAdmin:true });
+    return res.json({ success: true, isAdmin: true });
   }
-  const user = await User.findOne({ where:{ phoneNumber } });
-  if (!user) return res.status(400).json({ success:false, message:'کاربر یافت نشد' });
-  if (!await user.validPassword(password))
-    return res.status(400).json({ success:false, message:'رمز اشتباه است' });
-  if (!user.isActive) return res.json({ success:false, isActive:false });
+  const user = await User.findOne({ where: { phoneNumber } });
+  if (!user) {
+    return res.status(400).json({ success: false, message: 'کاربر یافت نشد' });
+  }
+  if (!await user.validPassword(password)) {
+    return res.status(400).json({ success: false, message: 'رمز اشتباه است' });
+  }
+  if (!user.isActive) {
+    return res.json({ success: false, isActive: false });
+  }
   req.session.userId = user.id;
-  res.json({ success:true, isActive:true });
+  res.json({ success: true, isActive: true });
 };
 
 // خروج

@@ -8,9 +8,12 @@
 <body>
   <button class="logout-btn" onclick="window.location='/logout'">خروج</button>
   <div class="slide" style="max-width:600px; margin-top:100px;">
-    <h2>خوش آمدی، <%= user.firstName %> <%= user.lastName %>!</h2>
-    <p>حساب شما {{ user.isActive ? 'فعال' : 'غیرفعال' }} است.</p>
-    <!-- اینجا بعداً قابلیت‌های پنل کاربری اضافه می‌شود -->
+    <!-- only first name -->
+    <h2>خوش آمدی، <%= user.firstName %>!</h2>
+    <!-- replaced status with random fact -->
+    <p style="margin-top:20px; font-size:18px; color:#aaa;">
+      💡 آیا می‌دانستی؟ <strong><%= fact %></strong>
+    </p>
   </div>
 </body>
 </html>

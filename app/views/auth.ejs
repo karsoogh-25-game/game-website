@@ -9,76 +9,86 @@
 </head>
 <body>
   <div id="app">
-    <!-- مسیر انتخاب -->
+    <!-- انتخاب مسیر -->
     <div v-if="slide===0" class="slide">
       <h2>سلام! چه کاری می‌خوای انجام بدی؟</h2>
       <button class="primary" @click="selectMode('register')">ثبت‌نام جدید</button>
       <button class="primary" @click="selectMode('login')">ورود</button>
     </div>
 
-    <!-- اسلایدها -->
-    <transition name="slide" mode="out-in">
+    <!-- ترنزیشن با mode="out-in" برای جلوگیری از پرش -->
+    <transition name="fade-scale" mode="out-in">
+      <!-- مراحل ثبت‌نام -->
       <div v-if="mode==='register' && slide>0 && slide<5" class="slide" :key="slide">
         <h3>مرحله {{slide}} از 4</h3>
 
         <div v-if="slide===1">
           <label>نام:</label>
-          <input v-model="firstName" type="text" placeholder="مثال: فراد">
+          <input v-model="firstName" :class="{ 'error-field': errorField==='firstName' }" placeholder="مثال: فراد">
           <label>نام خانوادگی:</label>
-          <input v-model="lastName" type="text" placeholder="مثال: رضایی">
+          <input v-model="lastName" :class="{ 'error-field': errorField==='lastName' }" placeholder="مثال: رضایی">
         </div>
 
         <div v-if="slide===2">
           <label>شماره موبایل:</label>
-          <input v-model="phoneNumber" type="text" placeholder="09123456789">
+          <input v-model="phoneNumber" :class="{ 'error-field': errorField==='phoneNumber' }" placeholder="09123456789">
           <label>کد ملی:</label>
-          <input v-model="nationalId" type="text" placeholder="0123456789">
+          <input v-model="nationalId" :class="{ 'error-field': errorField==='nationalId' }" placeholder="0123456789">
           <label>ایمیل:</label>
-          <input v-model="email" type="email" placeholder="Ligauk.info@gmail.com">
+          <input v-model="email" :class="{ 'error-field': errorField==='email' }" placeholder="Ligauk.info@gmail.com">
         </div>
 
         <div v-if="slide===3">
-          <p>کد ۶ رقمی ارسال شده به ایمیل:</p>
-          <input v-model="code" type="text" placeholder="————">
+          <p>کد ۶ رقمی ارسال شده:</p>
+          <input v-model="code" :class="{ 'error-field': errorField==='code' }" placeholder="———">
         </div>
 
         <div v-if="slide===4">
           <label>رمز عبور:</label>
-          <input v-model="password" type="password" placeholder="حداقل ۶ کاراکتر و عدد">
+          <input v-model="password" type="password" :class="{ 'error-field': errorField==='password' }" placeholder="حداقل ۶ کاراکتر و عدد">
           <label>تکرار رمز:</label>
-          <input v-model="password2" type="password" placeholder="دوباره وارد کنید">
+          <input v-model="password2" type="password" :class="{ 'error-field': errorField==='password2' }" placeholder="دوباره وارد کنید">
         </div>
 
-        <div>
-          <button class="secondary" @click="prev" :disabled="slide===1">قبلی</button>
-          <button class="primary" @click="next" :disabled="!canNext">{{ slide<4 ? 'بعدی' : 'ثبت‌نام' }}</button>
+        <div class="btn-group">
+          <!-- دکمه قبلی -->
+          <button class="secondary" @click="prev" :disabled="loading">قبلی</button>
+          <!-- دکمه بعدی -->
+          <button class="primary" @click="next" :disabled="loading">
+            {{ slide<4 ? 'بعدی' : 'ثبت‌نام' }}
+          </button>
         </div>
 
-        <p class="error" v-if="error">{{ error }}</p>
+        <!-- Spinner هنگام بارگذاری -->
+        <div v-if="loading" class="spinner"></div>
+
+        <p class="error">{{ errorMessage }}</p>
       </div>
 
-      <!-- تبریک -->
+      <!-- پایان ثبت‌نام -->
       <div v-if="mode==='register' && slide===5" class="slide" key="done">
         <h3>تبریک! ثبت‌نام با موفقیت انجام شد 🎉</h3>
         <button class="primary" @click="goToLogin">ورود</button>
       </div>
 
-      <!-- ورود -->
+      <!-- فرم ورود -->
       <div v-if="mode==='login' && slide===1" class="slide" key="login">
         <h3>ورود به حساب</h3>
         <label>شماره موبایل:</label>
-        <input v-model="phoneNumber" type="text" placeholder="09123456789">
+        <input v-model="phoneNumber" :class="{ 'error-field': errorField==='loginPhone' }" placeholder="09123456789">
         <label>رمز عبور:</label>
-        <input v-model="password" type="password" placeholder="******">
-        <div>
-          <button class="secondary" disabled>قبلی</button>
-          <button class="primary" @click="login" :disabled="!phoneNumber||!password">ورود</button>
+        <input v-model="password" type="password" :class="{ 'error-field': errorField==='loginPass' }" placeholder="******">
+        <div class="btn-group">
+          <!-- اکنون فعال است -->
+          <button class="secondary" @click="prev" :disabled="loading">قبلی</button>
+          <button class="primary" @click="login" :disabled="loading">ورود</button>
         </div>
-        <p class="error" v-if="error">{{ error }}</p>
+        <div v-if="loading" class="spinner"></div>
+        <p class="error">{{ errorMessage }}</p>
       </div>
     </transition>
 
-    <!-- پروگرس‌بار ثابت بیرون باکس -->
+    <!-- پروگرس‌بار ثابت -->
     <div class="progress-bar" v-if="mode==='register' && slide>0 && slide<=4">
       <div class="progress" :style="{ width: progress+'%' }"></div>
     </div>
