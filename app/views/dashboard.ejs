@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>پنل کاربری</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <button class="logout-btn" onclick="window.location='/logout'">خروج</button>
+  <div class="slide" style="max-width:600px; margin-top:100px;">
+    <h2>خوش آمدی، <%= user.firstName %> <%= user.lastName %>!</h2>
+    <p>حساب شما {{ user.isActive ? 'فعال' : 'غیرفعال' }} است.</p>
+    <!-- اینجا بعداً قابلیت‌های پنل کاربری اضافه می‌شود -->
+  </div>
+</body>
+</html>
