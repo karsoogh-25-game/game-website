@@ -6,12 +6,182 @@
   <title>پنل کاربری</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* افزودن ترنزیشن برای بخش‌ها */
+    .content-section {
+      opacity: 0;
+      transition: opacity .3s ease;
+    }
+    .content-section.active {
+      opacity: 1;
+    }
+  </style>
 </head>
-<body class="bg-pattern min-h-screen flex items-center justify-center p-4">
-  <div class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-8 rounded-2xl max-w-md w-full text-center">
-    <button class="logout-btn absolute top-4 left-4" onclick="window.location='/logout'">خروج</button>
-    <h2 class="text-3xl font-bold text-white mb-4">خوش آمدی، <%= user.firstName %>!</h2>
-    <p class="text-gray-300 text-lg">💡 آیا می‌دانستی؟ <strong><%= fact %></strong></p>
+<body class="bg-pattern font-wazir flex h-screen overflow-hidden">
+
+  <!-- Desktop Sidebar -->
+  <aside class="hidden md:flex flex-col w-64 bg-gray-900 border-l border-gray-800">
+    <div class="h-16 flex items-center justify-center bg-gray-800">
+      <i class="fas fa-chalkboard-teacher text-blue-400 text-2xl ml-2"></i>
+      <span class="text-white font-bold text-lg">پنل دانش‌آموز</span>
+    </div>
+    <nav class="flex-grow overflow-y-auto">
+      <ul class="mt-4">
+        <% const sections = [
+             { id:'dashboard',    label:'داشبورد',      icon:'tachometer-alt' },
+             { id:'training',     label:'محتوای آموزشی', icon:'book' },
+             { id:'groups',       label:'گروه‌بندی',     icon:'users' },
+             { id:'bank',         label:'بانک',          icon:'university' },
+             { id:'store',        label:'فروشگاه',      icon:'store' },
+             { id:'scoreboard',   label:'جدول امتیازات', icon:'list-ol' },
+             { id:'announcements',label:'اطلاعیه‌ها',   icon:'bullhorn' },
+           ];
+        %>
+        <% sections.forEach(s => {
+             if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
+        %>
+          <li>
+            <a href="#" class="menu-item flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
+              <i class="fas fa-<%= s.icon %> ml-3 text-blue-400"></i>
+              <span><%= s.label %></span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Mobile Sidebar -->
+  <aside id="mobile-menu"
+         class="fixed inset-y-0 right-0 w-64 bg-gray-900 border-l border-gray-800 transform translate-x-full transition-transform duration-300 ease-in-out md:hidden"
+         style="z-index: 10;">
+    <div class="h-16 flex items-center justify-between bg-gray-800 px-4">
+      <div class="flex items-center">
+        <i class="fas fa-chalkboard-teacher text-blue-400 text-xl ml-2"></i>
+        <span class="text-white font-bold">پنل دانش‌آموز</span>
+      </div>
+      <button id="close-mobile-menu" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+    </div>
+    <nav class="py-4 overflow-y-auto">
+      <ul>
+        <% sections.forEach(s => {
+             if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
+        %>
+          <li>
+            <a href="#" class="menu-item block px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
+              <i class="fas fa-<%= s.icon %> ml-3 text-blue-400"></i>
+              <span><%= s.label %></span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Header -->
+    <header class="flex items-center justify-between h-16 bg-gray-800 border-b border-gray-700 px-1">
+      <div class="flex items-center">
+        <button id="open-mobile-menu" class="text-gray-400 hover:text-white md:hidden mr-4">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
+        <h1 id="page-title" class="text-white text-xl font-bold">داشبورد</h1>
+      </div>
+      <div class="flex items-center">
+        <button class="relative text-gray-400 hover:text-white">
+          <i class="fas fa-bell text-xl"></i>
+          <span class="absolute top-2 left-5 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <button href="/logout" class="text-gray-400 hover:text-white">
+          <i class="fas fa-sign-out-alt text-xl"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Sections -->
+    <main class="flex-1 overflow-auto p-4 md:p-8 border-none" style="border: none !important;">
+      <!-- Dashboard -->
+      <section id="dashboard" class="content-section active">
+        <div class="mb-8 text-center">
+          <h2 class="text-3xl font-bold text-white mb-2">خوش آمدی، <%= user.firstName %>!</h2>
+          <p class="text-gray-300 text-lg">💡 آیا می‌دانستی؟ <strong><%= fact %></strong></p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="card bg-gray-700 rounded-lg p-6">
+            <p class="text-gray-400 text-sm">امتیاز شما</p>
+            <p class="text-white text-2xl font-bold">—</p>
+          </div>
+          <div class="card bg-gray-700 rounded-lg p-6">
+            <p class="text-gray-400 text-sm">دروس تکمیل‌شده</p>
+            <p class="text-white text-2xl font-bold">—</p>
+          </div>
+          <div class="card bg-gray-700 rounded-lg p-6">
+            <p class="text-gray-400 text-sm">اعضا</p>
+            <p class="text-white text-2xl font-bold">—</p>
+          </div>
+          <div class="card bg-gray-700 rounded-lg p-6">
+            <p class="text-gray-400 text-sm">اعلان‌ها</p>
+            <p class="text-white text-2xl font-bold">—</p>
+          </div>
+        </div>
+      </section>
+
+      <% ['training','groups','bank','store','scoreboard','announcements'].forEach(id=>{ %>
+        <section id="<%= id %>" class="content-section hidden">
+          <h2 class="text-xl font-bold text-white mb-4"><%= sections.find(s=>s.id===id).label %></h2>
+          <p class="text-gray-500">فعلاً خالی …</p>
+        </section>
+      <% }) %>
+    </main>
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      const mobileMenu = document.getElementById('mobile-menu');
+      document.getElementById('open-mobile-menu')
+        .addEventListener('click', () => {
+          mobileMenu.classList.remove('translate-x-full');
+          mobileMenu.classList.add('translate-x-0');
+        });
+      document.getElementById('close-mobile-menu')
+        .addEventListener('click', () => {
+          mobileMenu.classList.remove('translate-x-0');
+          mobileMenu.classList.add('translate-x-full');
+        });
+
+      const menuItems = Array.from(document.querySelectorAll('.menu-item'));
+      const sections  = Array.from(document.querySelectorAll('.content-section'));
+      const pageTitle = document.getElementById('page-title');
+
+      function showSection(id){
+        sections.forEach(sec => {
+          if (sec.id === id) {
+            sec.classList.remove('hidden');
+            sec.classList.add('active');
+          } else {
+            sec.classList.remove('active');
+            sec.classList.add('hidden');
+          }
+        });
+      }
+
+      menuItems.forEach(item=>{
+        item.addEventListener('click', e=>{
+          e.preventDefault();
+          menuItems.forEach(i=> i.classList.remove('active'));
+          item.classList.add('active');
+          showSection(item.dataset.section);
+          pageTitle.textContent = item.innerText;
+          if (window.innerWidth < 768) {
+            mobileMenu.classList.add('translate-x-full');
+            mobileMenu.classList.remove('translate-x-0');
+          }
+        });
+      });
+    });
+  </script>
+
 </body>
 </html>
