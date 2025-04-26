@@ -26,7 +26,7 @@ exports.registerStep1 = (req, res) => {
 exports.registerStep2 = async (req, res) => {
   const { phoneNumber, nationalId, email } = req.body;
   if (!phoneNumber || !nationalId || !email) {
-    return res.status(400).json({ success: false, message: 'تمام فیلدها الزامی است' });
+    return res.status(400).json({ success: false, message: 'تمام اطلاعات الزامی است' });
   }
   if (!/^09\d{9}$/.test(phoneNumber)) {
     return res.status(400).json({ success: false, message: 'شماره موبایل نامعتبر است' });
@@ -70,14 +70,14 @@ exports.registerStep2 = async (req, res) => {
     await transporter.sendMail({
       from: `"Ligauk Registration" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'کد تأیید ثبت‌نام',
+      subject: 'کد تأیید ثبت‌نام لیگک',
       text: `کد: ${code} (۱۰ دقیقه معتبر)`,
       html: htmlContent
     });
     res.json({ success: true });
   } catch (err) {
     console.error('Email error:', err);
-    res.status(500).json({ success: false, message: 'ارسال ایمیل ناموفق' });
+    res.status(500).json({ success: false, message: 'ارسال ایمیل ناموفق (خطا سرور) با پشتیبانی تماس حاصل کنید' });
   }
 };
 
@@ -95,7 +95,7 @@ exports.verifyCode = (req, res) => {
 exports.registerSetPassword = async (req, res) => {
   const { password } = req.body;
   if (!/^(?=.*\d)[A-Za-z\d]{6,}$/.test(password)) {
-    return res.status(400).json({ success: false, message: 'رمز باید حداقل ۶ حرف و شامل عدد باشد' });
+    return res.status(400).json({ success: false, message: 'رمز باید حداقل ۶ حرف همچنین شامل حروف انگلیسی و عدد باشد' });
   }
   try {
     await User.create({ ...req.session.regData, password });
