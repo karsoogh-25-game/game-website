@@ -33,3 +33,14 @@ exports.updateUser = async (req, res) => {
   req.io.emit('userUpdated', user);
   res.json(user);
 };
+
+
+// حذف کاربر
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params;
+  const user = await User.findByPk(id);
+  if (!user) return res.status(404).json({ message: 'کاربر پیدا نشد' });
+  await user.destroy();
+  req.io.emit('userDeleted', { id: user.id });
+  res.json({ message: 'کاربر حذف شد' });
+};
