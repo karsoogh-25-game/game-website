@@ -24,15 +24,29 @@ exports.listUsers = async (req, res) => {
 // به‌روزرسانی کاربر + انتشار real-time
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
-  const fields = ['firstName','lastName','phoneNumber','nationalId','email','isActive'];
+  // اضافه کردن 'role' به فیلدهای قابل به‌روزرسانی
+  const fields = ['firstName', 'lastName', 'phoneNumber', 'nationalId', 'email', 'isActive', 'role'];
   const data = {};
-  fields.forEach(f => { if (req.body[f] !== undefined) data[f] = req.body[f]; });
+  
+  // بررسی و اضافه کردن فیلدها به داده‌های ارسالی
+  fields.forEach(f => { 
+    if (req.body[f] !== undefined) data[f] = req.body[f]; 
+  });
+
+  // پیدا کردن کاربر بر اساس id
   const user = await User.findByPk(id);
   if (!user) return res.status(404).json({ message: 'کاربر یافت نشد' });
+
+  // به‌روزرسانی کاربر
   await user.update(data);
+
+  // ارسال تغییرات به سایر کلاینت‌ها از طریق WebSocket
   req.io.emit('userUpdated', user);
+
+  // پاسخ به کلاینت
   res.json(user);
 };
+
 
 
 // حذف کاربر

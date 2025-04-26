@@ -30,11 +30,6 @@ new Vue({
       }
     });
 
-    // گرفتن اجازه برای نوتیفیکیشن
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
-
     // بارگذاری اولیه
     this.loadSection();
   },
@@ -48,15 +43,8 @@ new Vue({
       if (this.activeSection === 'users')   this.fetchUsers();
       if (this.activeSection === 'mentors') this.fetchMentors();
     },
-    showNotification(msg) {
-      if (!('Notification' in window)) return;
-      if (Notification.permission === 'granted') {
-        new Notification('پنل ادمین', { body: msg });
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(p => {
-          if (p === 'granted') new Notification('پنل ادمین', { body: msg });
-        });
-      }
+    showError(msg) {
+      alert(msg);  // پیام خطا را به صورت یک alert نمایش می‌دهد.
     },
     async fetchUsers() {
       try {
@@ -67,7 +55,7 @@ new Vue({
             .some(f => f.includes(this.search))
           );
       } catch {
-        this.showNotification('خطا در دریافت کاربران');
+        this.showError('خطا در دریافت کاربران');
       }
     },
     async fetchMentors() {
@@ -79,27 +67,27 @@ new Vue({
             .some(f => f.includes(this.searchMentor))
           );
       } catch {
-        this.showNotification('خطا در دریافت منتورها');
+        this.showError('خطا در دریافت منتورها');
       }
     },
     async updateUser(u) {
       try {
         await axios.put(`/admin/api/users/${u.id}`, u);
-        this.showNotification('تغییرات ذخیره شد');
+        this.showError('تغییرات ذخیره شد');
         // بعد از آپدیت نقش، بخش مجدد لود بشه
         this.loadSection();
       } catch {
-        this.showNotification('خطا در ذخیره تغییرات');
+        this.showError('خطا در ذخیره تغییرات');
       }
     },
     async deleteUser(u) {
       if (!confirm(`آیا از حذف ${u.firstName} ${u.lastName} مطمئن هستید؟`)) return;
       try {
         await axios.delete(`/admin/api/users/${u.id}`);
-        this.showNotification('کاربر با موفقیت حذف شد');
+        this.showError('کاربر با موفقیت حذف شد');
         this.loadSection(); // بعد حذف، کل دیتا رو دوباره بگیر
       } catch {
-        this.showNotification('خطا در حذف کاربر');
+        this.showError('خطا در حذف کاربر');
       }
     }
   }
