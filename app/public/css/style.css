@@ -15,13 +15,13 @@
 }
 
 /* =========================================================================
-   ۲) قواعد پایه (Reset & Base)
+   ۲) Reset & Base
    ========================================================================= */
 /* اعمال فونت روی تمام متون */
 body, input, button, label, h1, h2, h3, h4, h5, h6, th, td {
   font-family: 'Vazir', sans-serif !important;
 }
-/* راست‌چین کلی و پس‌زمینهٔ تیره متحرک */
+/* راست‌چین و پس‌زمینهٔ تیره */
 body {
   direction: rtl;
   margin: 0;
@@ -33,14 +33,14 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
 }
-/* placeholder برای ورودی‌ها */
+/* placeholder */
 input::placeholder {
   color: #aaa;
   opacity: 1;
 }
 
 /* =========================================================================
-   ۳) الگوی پس‌زمینهٔ متحرک (bg-pattern)
+   ۳) پس‌زمینهٔ متحرک (bg-pattern)
    ========================================================================= */
 .bg-pattern {
   background:
@@ -72,14 +72,14 @@ input::placeholder {
    ۵) دکمه خروج (logout-btn)
    ========================================================================= */
 .logout-btn {
-  font-size: 14px;
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 1rem;
+  left: 1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
   background: transparent;
   border: 1px solid #888;
-  padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 0.375rem;
   color: #ddd;
   cursor: pointer;
   transition: background .2s, color .2s;
@@ -92,45 +92,34 @@ input::placeholder {
 /* =========================================================================
    ۶) دکمه‌های عمومی (button, btn-primary, btn-secondary)
    ========================================================================= */
-/* افزایش padding داخلی برای زیبایی بیشتر */
 button {
   font-size: 16px;
   cursor: pointer;
   border: none;
-  border-radius: 4px;
-  padding: 14px 32px !important;  /* بزرگ‌تر شدن padding */
+  border-radius: 0.375rem;
+  padding: 14px 32px;
   margin: 8px;
   transition: background .2s, transform .1s;
 }
-/* دکمه اصلی گرادیانت */
 .btn-primary,
 button.primary {
   background: linear-gradient(45deg, #10b981, #3b82f6);
   box-shadow: 0 4px 15px rgba(16,185,129,0.3);
-  transition: all .3s ease;
 }
 .btn-primary:hover,
 button.primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16,185,129,0.4);
 }
-/* دکمه ثانویه گرادیانت */
 .btn-secondary,
 button.secondary {
   background: linear-gradient(45deg, #3b82f6, #10b981);
   box-shadow: 0 4px 15px rgba(59,130,246,0.3);
-  transition: all .3s ease;
 }
 .btn-secondary:hover,
 button.secondary:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(59,130,246,0.4);
-}
-
-.btn-group button,
-button.primary,
-button.secondary {
-  border-radius: 12px !important;
 }
 
 /* =========================================================================
@@ -147,7 +136,7 @@ button.secondary {
 }
 
 /* =========================================================================
-   ۸) ورودی‌ها (input-field)
+   ۸) ورودی‌ها (input-field, input)
    ========================================================================= */
 .input-field,
 input {
@@ -157,7 +146,7 @@ input {
   margin: 8px 0;
   background-color: rgba(30,41,59,0.7);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 4px;
+  border-radius: 0.375rem;
   color: #eee;
   box-sizing: border-box;
   transition: border-color .2s, box-shadow .2s, background .3s;
@@ -168,14 +157,13 @@ input:focus {
   box-shadow: 0 0 0 3px rgba(16,185,129,0.3);
   outline: none;
 }
-/* حالت خطا برای ورودی */
 input.error-field {
   border-color: #e53935 !important;
   box-shadow: 0 0 4px rgba(229,57,53,0.7);
 }
 
 /* =========================================================================
-   ۹) کانتینر اسلاید (slide)
+   ۹) کانتینر اسلاید (slide) و عناصر مرتبط
    ========================================================================= */
 .slide {
   display: block;
@@ -183,7 +171,7 @@ input.error-field {
   margin: 80px auto 40px;
   padding: 24px;
   background: #1e1e1e;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.5);
   position: relative;
 }
@@ -192,16 +180,17 @@ input.error-field {
   margin-bottom: 16px;
   font-size: 20px;
 }
-/* گروه دکمه‌های قبلی/بعدی */
 .slide .btn-group {
   display: flex;
-  direction: ltr;
   justify-content: space-between;
   margin-top: 16px;
 }
-/* پروگرس‌بار */
+.slide .btn-group button {
+  padding: 14px 32px !important;
+  border-radius: 0.75rem !important;
+}
 .progress-bar {
-  width: 100%;           /* حالا ۱۰۰% ظرف اسلاید */
+  width: 100%;
   max-width: 420px;
   height: 6px;
   background: #444;
@@ -217,31 +206,25 @@ input.error-field {
 }
 
 /* =========================================================================
-   ۱۰) ترنزیشن fade+scale برای Vue
+   ۱۰) گذار fade+scale برای Vue
    ========================================================================= */
 .fade-scale-enter-active,
 .fade-scale-leave-active {
   transition: all .3s ease;
 }
-.fade-scale-enter {
-  opacity: 0;
-  transform: scale(0.9);
-}
-.fade-scale-enter-to {
-  opacity: 1;
-  transform: scale(1);
-}
-.fade-scale-leave {
-  opacity: 1;
-  transform: scale(1);
-}
+.fade-scale-enter,
 .fade-scale-leave-to {
   opacity: 0;
   transform: scale(0.9);
 }
+.fade-scale-enter-to,
+.fade-scale-leave {
+  opacity: 1;
+  transform: scale(1);
+}
 
 /* =========================================================================
-   ۱۱) Spinner زیر فرم (spinner)
+   ۱۱) Spinner زیر فرم
    ========================================================================= */
 .spinner {
   border: 4px solid #555;
@@ -257,7 +240,7 @@ input.error-field {
 }
 
 /* =========================================================================
-   ۱۲) پیام خطا (error)
+   ۱۲) پیام خطا عمومی
    ========================================================================= */
 .error {
   color: #e53935;
@@ -270,12 +253,13 @@ input.error-field {
    ========================================================================= */
 .search-input {
   font-size: 16px;
-  width: 300px; max-width: 90%;
+  width: 300px;
+  max-width: 90%;
   padding: 10px;
   margin: 20px auto;
   background: #3a3a3a;
   border: 1px solid #555;
-  border-radius: 4px;
+  border-radius: 0.375rem;
   color: #eee;
   transition: border-color .2s;
 }
@@ -284,11 +268,12 @@ input.error-field {
   box-shadow: 0 0 4px rgba(33,150,243,0.5);
 }
 .admin-table {
-  width: 90%; max-width: 1000px;
+  width: 90%;
+  max-width: 1000px;
   margin: 0 auto 40px;
   border-collapse: collapse;
   background: #1e1e1e;
-  border-radius: 4px;
+  border-radius: 0.375rem;
   overflow: hidden;
 }
 .admin-table th,
@@ -297,6 +282,7 @@ input.error-field {
   border: 1px solid #444;
   color: #ddd;
   font-size: 15px;
+  white-space: nowrap;
 }
 .admin-table th {
   background: #3a3a3a;
@@ -338,130 +324,39 @@ input.error-field {
 }
 
 /* =========================================================================
-   ۱۵) ریسپانسیو‌سازی برای موبایل (حداکثر 768px)
+   ۱۵) ریسپانسیو موبایل (تا 768px)
    ========================================================================= */
 @media (max-width: 768px) {
-  /* فرم اسلاید تمام عرض و بدون حاشیه‌های بزرگ */
+  /* فرم اسلاید و کانتینر */
+  .container,
   .slide {
     max-width: 100% !important;
     margin: 20px 0 !important;
     padding: 16px !important;
-    border-radius: 0 !important;
+    border-radius: 0.5rem !important;
     box-shadow: none !important;
   }
-  /* عناوین کوچکتر برای موبایل */
-  .slide h2, .slide h3 {
-    font-size: 18px !important;
-    margin-bottom: 12px !important;
-  }
-  /* ورودی‌ها کمی بزرگ‌تر برای لمس راحت‌تر */
-  .input-field, input {
-    font-size: 14px !important;
-    padding: 10px !important;
-  }
-  /* دکمه‌ها جمع‌وجورتر */
-  button {
-    font-size: 14px !important;
-    padding: 10px 20px !important;
-    margin: 4px !important;
-  }
-  /* پروگرس‌بار تمام عرض */
-  .progress-bar {
-    max-width: 100% !important;
-  }
-}
-
-/* =========================================================================
-   ریسپانسیو موبایل: فرم تمام عرض، حذف padding کناری ظرف اصلی
-   ========================================================================= */
-@media (max-width: 768px) {
-  /* ظرف اصلی (#app container) بی‌حاشیه و تمام عرض */
-  .container {
-    max-width: 100% !important;    /* اشغال ۱۰۰٪ عرض */
-    padding-left: 0 !important;     /* حذف padding کناری */
-    padding-right: 0 !important;
-    margin-left: 0 !important;      /* حذف margin خودکار */
-    margin-right: 0 !important;
-  }
-
-  /* خود فرم (.slide) تمام عرض، بدون شعاع گوشه و بدون سایه */
-  .slide {
-    max-width: 100% !important;     /* بی‌قید عرض */
-    margin: 20px 0 !important;      /* فقط فاصله عمودی */
-    padding: 16px !important;       /* کمتر کردن padding داخلی */
-    border-radius: 0 !important;    /* حذف گردشدگی گوشه */
-    box-shadow: none !important;    /* حذف سایه */
-  }
-
-  /* عناوین کمی کوچکتر */
   .slide h2,
   .slide h3 {
     font-size: 18px !important;
     margin-bottom: 12px !important;
   }
-
-  /* ورودی‌ها و دکمه‌ها برای لمس راحت‌تر کمی بزرگ‌تر */
+  /* ورودی و دکمه */
   .input-field,
-  input {
-    font-size: 15px !important;
-    padding: 10px !important;
-  }
+  input,
   button {
-    font-size: 15px !important;
+    font-size: 14px !important;
     padding: 10px 20px !important;
     margin: 6px !important;
   }
-
-  /* پروگرس‌بار تمام عرض اسلاید */
+  /* پروگرس‌بار */
   .progress-bar {
     max-width: 100% !important;
   }
-}
-
-
-/* =========================================================================
-   ۱۶) تضمین padding برای دکمه‌های قبلی/بعدی
-   – این قانون بعد از همهٔ استایل‌های دیگر بیاید
-   – specificity بالاتر + !important برای روی‌نویسی مطمئن
-   ========================================================================= */
-.slide .btn-group button {
-  /* هم در دسکتاپ و هم موبایل */
-  padding: 14px 32px !important;
-}
-
-
-
-
-/* اگر در موبایل می‌خواهی کمی جمع‌وجورتر باشد، می‌توانی این‌طور هم تعریف کنی */
-@media (max-width: 768px) {
-  .slide .btn-group button {
-    padding: 10px 20px !important;
-  }
-}
-
-@media (max-width: 768px) {
-  /* گرد کردن بیشتر گوشه‌ی فرم اسلاید */
-  .slide {
-    border-radius: 16px !important;
-  }
-
-  /* گردتر کردن دکمه‌ها */
-  .slide .btn-group button,
-  button.primary,
-  button.secondary {
-    border-radius: 12px !important;
-  }
-
-  /* گردتر کردن ورودی‌ها */
-  .input-field,
-  input {
-    border-radius: 8px !important;
-  }
-
-  /* اگر جدول ادمین هم در موبایل استفاده می‌شود */
+  /* جدول ادمین گردتر */
   .admin-table,
   .admin-table th,
   .admin-table td {
-    border-radius: 6px !important;
+    border-radius: 0.375rem !important;
   }
 }
