@@ -1,39 +1,40 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <title>پنل ادمین</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 </head>
-<body>
-  <button class="logout-btn" onclick="window.location='/logout'">خروج</button>
-  <div id="adminApp">
-    <h2>پنل مدیریت کاربران</h2>
-    <input v-model="search" @input="fetchUsers" placeholder="جستجو…" class="search-input">
-    <table class="admin-table">
+<body class="bg-pattern min-h-screen p-4">
+  <button class="logout-btn absolute top-4 left-4" onclick="window.location='/logout'">خروج</button>
+  <div id="adminApp" class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-8 rounded-2xl max-w-4xl mx-auto mt-20">
+    <h2 class="text-3xl font-bold text-white mb-6">پنل مدیریت کاربران</h2>
+    <input v-model="search" @input="fetchUsers" placeholder="جستجو…" class="search-input mb-6">
+    <table class="admin-table w-full">
       <thead>
         <tr>
-          <th>ردیف</th><th>نام</th><th>نام‌خانوادگی</th>
-          <th>موبایل</th><th>کد ملی</th><th>ایمیل</th><th>فعال؟</th><th>عملیات</th>
+          <th class="px-4 py-2">ردیف</th><th class="px-4 py-2">نام</th><th class="px-4 py-2">نام‌خانوادگی</th>
+          <th class="px-4 py-2">موبایل</th><th class="px-4 py-2">کد ملی</th><th class="px-4 py-2">ایمیل</th><th class="px-4 py-2">فعال؟</th><th class="px-4 py-2">عملیات</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(user, idx) in users" :key="user.id">
-          <td>{{ idx+1 }}</td>
-          <td><input v-model="user.firstName"></td>
-          <td><input v-model="user.lastName"></td>
-          <td><input v-model="user.phoneNumber"></td>
-          <td><input v-model="user.nationalId"></td>
-          <td><input v-model="user.email"></td>
-          <td><input type="checkbox" v-model="user.isActive"></td>
-          <td><button class="primary" @click="updateUser(user)">ذخیره</button></td>
+        <tr v-for="(user, idx) in users" :key="user.id" class="hover:bg-gray-700">
+          <td class="border px-4 py-2">{{ idx+1 }}</td>
+          <td class="border px-4 py-2"><input v-model="user.firstName" class="input-field w-full"></td>
+          <td class="border px-4 py-2"><input v-model="user.lastName" class="input-field w-full"></td>
+          <td class="border px-4 py-2"><input v-model="user.phoneNumber" class="input-field w-full"></td>
+          <td class="border px-4 py-2"><input v-model="user.nationalId" class="input-field w-full"></td>
+          <td class="border px-4 py-2"><input v-model="user.email" class="input-field w-full"></td>
+          <td class="border px-4 py-2 text-center"><input type="checkbox" v-model="user.isActive"></td>
+          <td class="border px-4 py-2 text-center"><button class="primary" @click="updateUser(user)">ذخیره</button></td>
         </tr>
       </tbody>
     </table>
-    <p class="error" v-if="error">{{ error }}</p>
+    <p class="error mt-4" v-if="error">{{ error }}</p>
   </div>
   <script src="/js/admin.js"></script>
 </body>

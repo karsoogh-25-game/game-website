@@ -3,97 +3,138 @@
 <head>
   <meta charset="UTF-8">
   <title>ثبت‌نام / ورود</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-  <div id="app">
-    <!-- انتخاب مسیر -->
-    <div v-if="slide===0" class="slide">
-      <h2>سلام! چه کاری می‌خوای انجام بدی؟</h2>
-      <button class="primary" @click="selectMode('register')">ثبت‌نام جدید</button>
-      <button class="primary" @click="selectMode('login')">ورود</button>
+<body class="bg-pattern min-h-screen flex items-center justify-center p-4">
+  <div id="app" class="container mx-auto max-w-4xl flex flex-col lg:flex-row rounded-2xl overflow-hidden shadow-2xl">
+    
+    <!-- Illustration side: show only on lg+ -->
+    <div class="hidden lg:flex lg:w-2/5 bg-gradient-to-b from-gray-900 to-gray-800 p-8 flex-col items-center justify-center relative overflow-hidden">
+      <div class="relative z-10 text-center">
+        <div class="floating mb-8">
+          <img src="https://cdn-icons-png.flaticon.com/512/3209/3209260.png" class="w-56 h-56 mx-auto" alt="Illustration">
+        </div>
+        <h2 class="text-3xl font-bold text-white mb-4">به لیگک خوش آمدید</h2>
+        <p class="text-gray-300 mb-6">با ثبت‌نام در لیگک در مسابقه شرکت کنید</p>
+      </div>
+      <div class="flex justify-center space-x-4 space-x-reverse">
+        <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white glow hover:scale-110 transition-transform">
+            <i class="fab fa-linkedin text-xl"></i>
+        </div>
+        <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white glow-blue hover:scale-110 transition-transform">
+            <i class="fab fa-telegram text-xl"></i>
+        </div>
+        <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white glow hover:scale-110 transition-transform">
+            <i class="fab fa-instagram text-xl"></i>
+        </div>
+      </div>
     </div>
 
-    <!-- ترنزیشن با mode="out-in" برای جلوگیری از پرش -->
-    <transition name="fade-scale" mode="out-in">
-      <!-- مراحل ثبت‌نام -->
-      <div v-if="mode==='register' && slide>0 && slide<5" class="slide" :key="slide">
-        <h3>مرحله {{slide}} از 4</h3>
-
-        <div v-if="slide===1">
-          <label>نام:</label>
-          <input v-model="firstName" :class="{ 'error-field': errorField==='firstName' }" placeholder="مثال: فراد">
-          <label>نام خانوادگی:</label>
-          <input v-model="lastName" :class="{ 'error-field': errorField==='lastName' }" placeholder="مثال: رضایی">
-        </div>
-
-        <div v-if="slide===2">
-          <label>شماره موبایل:</label>
-          <input v-model="phoneNumber" :class="{ 'error-field': errorField==='phoneNumber' }" placeholder="09123456789">
-          <label>کد ملی:</label>
-          <input v-model="nationalId" :class="{ 'error-field': errorField==='nationalId' }" placeholder="0123456789">
-          <label>ایمیل:</label>
-          <input v-model="email" :class="{ 'error-field': errorField==='email' }" placeholder="Ligauk.info@gmail.com">
-        </div>
-
-        <div v-if="slide===3">
-          <p>کد ۶ رقمی ارسال شده:</p>
-          <input v-model="code" :class="{ 'error-field': errorField==='code' }" placeholder="———">
-        </div>
-
-        <div v-if="slide===4">
-          <label>رمز عبور:</label>
-          <input v-model="password" type="password" :class="{ 'error-field': errorField==='password' }" placeholder="حداقل ۶ کاراکتر و عدد">
-          <label>تکرار رمز:</label>
-          <input v-model="password2" type="password" :class="{ 'error-field': errorField==='password2' }" placeholder="دوباره وارد کنید">
-        </div>
-
-        <div class="btn-group">
-          <!-- دکمه قبلی -->
-          <button class="secondary" @click="prev" :disabled="loading">قبلی</button>
-          <!-- دکمه بعدی -->
-          <button class="primary" @click="next" :disabled="loading">
-            {{ slide<4 ? 'بعدی' : 'ثبت‌نام' }}
-          </button>
-        </div>
-
-        <!-- Spinner هنگام بارگذاری -->
-        <div v-if="loading" class="spinner"></div>
-
-        <p class="error">{{ errorMessage }}</p>
+    <!-- Forms side: full width on mobile, 3/5 on lg+ -->
+    <div class="w-full lg:w-3/5 bg-gray-800 bg-opacity-70 backdrop-filter backdrop-blur-lg p-8 lg:p-12">
+      <!-- Tabs -->
+      <div class="flex mb-8 border-b border-gray-700">
+        <button @click="selectMode('login')"
+                :class="mode==='login'? 'text-white border-green-500':'text-gray-400'"
+                class="flex-1 py-3 font-medium border-b-2">
+          ورود
+        </button>
+        <button @click="selectMode('register')"
+                :class="mode==='register'? 'text-white border-green-500':'text-gray-400'"
+                class="flex-1 py-3 font-medium border-b-2">
+          ثبت‌نام
+        </button>
       </div>
 
-      <!-- پایان ثبت‌نام -->
-      <div v-if="mode==='register' && slide===5" class="slide" key="done">
-        <h3>تبریک! ثبت‌نام با موفقیت انجام شد 🎉</h3>
-        <button class="primary" @click="goToLogin">ورود</button>
+      <!-- helper text on initial slide (no box) -->
+      <div v-if="slide===0">
+        <p class="text-gray-400 mb-6">لطفاً یکی از گزینه‌های «ورود» یا «ثبت‌نام» را انتخاب کنید.</p>
       </div>
 
-      <!-- فرم ورود -->
-      <div v-if="mode==='login' && slide===1" class="slide" key="login">
-        <h3>ورود به حساب</h3>
-        <label>شماره موبایل:</label>
-        <input v-model="phoneNumber" :class="{ 'error-field': errorField==='loginPhone' }" placeholder="09123456789">
-        <label>رمز عبور:</label>
-        <input v-model="password" type="password" :class="{ 'error-field': errorField==='loginPass' }" placeholder="******">
-        <div class="btn-group">
-          <!-- اکنون فعال است -->
-          <button class="secondary" @click="prev" :disabled="loading">قبلی</button>
-          <button class="primary" @click="login" :disabled="loading">ورود</button>
+      <transition name="fade-scale" mode="out-in">
+        <!-- Login Slide -->
+        <div v-if="mode==='login' && slide>0" class="slide" key="login">
+          <h3 class="text-2xl font-bold text-white mb-4">ورود به حساب</h3>
+          
+          <label class="block text-gray-300 mb-1">شماره موبایل</label>
+          <input v-model="phoneNumber" class="input-field text-white mb-4" placeholder="09123456789">
+          
+          <label class="block text-gray-300 mb-1">رمز عبور</label>
+          <input v-model="password" type="password" class="input-field text-white mb-6" placeholder="••••••">
+          
+          <div class="btn-group flex justify-between">
+            <!-- Prev on left -->
+            <button class="secondary" @click="prev" :disabled="loading">قبلی</button>
+            <!-- Next on right -->
+            <button class="primary" @click="login" :disabled="loading">ورود</button>
+          </div>
+          
+          <div v-if="loading" class="spinner"></div>
+          <p class="error">{{ errorMessage }}</p>
         </div>
-        <div v-if="loading" class="spinner"></div>
-        <p class="error">{{ errorMessage }}</p>
-      </div>
-    </transition>
 
-    <!-- پروگرس‌بار ثابت -->
-    <div class="progress-bar" v-if="mode==='register' && slide>0 && slide<=4">
-      <div class="progress" :style="{ width: progress+'%' }"></div>
+        <!-- Register Slides -->
+        <div v-if="mode==='register' && slide>0 && slide<5" class="slide" :key="slide">
+          <h3 class="text-2xl font-bold text-white mb-4">مرحله {{slide}} از 4</h3>
+          
+          <div v-if="slide===1">
+            <label class="block text-gray-300 mb-1">نام</label>
+            <input v-model="firstName" class="input-field text-white mb-4">
+            <label class="block text-gray-300 mb-1">نام خانوادگی</label>
+            <input v-model="lastName" class="input-field text-white mb-4">
+          </div>
+          
+          <div v-if="slide===2">
+            <label class="block text-gray-300 mb-1">شماره موبایل</label>
+            <input v-model="phoneNumber" class="input-field text-white mb-4" placeholder="09123456789">
+            <label class="block text-gray-300 mb-1">کد ملی</label>
+            <input v-model="nationalId" class="input-field text-white mb-4" placeholder="0123456789">
+            <label class="block text-gray-300 mb-1">ایمیل</label>
+            <input v-model="email" class="input-field text-white mb-4" placeholder="example@domain.com">
+          </div>
+          
+          <div v-if="slide===3">
+            <label class="block text-gray-300 mb-1">کد ۶ رقمی</label>
+            <label class="block text-gray-200 mb-1">اگر ایمیل برای شما ارسال نشد پوشه spam را در صندوق خود چک کنید</label>
+            <input v-model="code" class="input-field text-white mb-4" placeholder="000000">
+          </div>
+          
+          <div v-if="slide===4">
+            <label class="block text-gray-300 mb-1">رمز عبور</label>
+            <input v-model="password" type="password" class="input-field text-white mb-4" placeholder="••••••">
+            <label class="block text-gray-300 mb-1">تکرار رمز عبور</label>
+            <input v-model="password2" type="password" class="input-field text-white mb-4" placeholder="••••••">
+            <label class="block text-gray-300 mb-1">رمز عبور باید حداقل 6 حرف ، شامل حروف انگلیسی و اعداد باشد</label>
+          </div>
+          
+          <div class="btn-group flex justify-between mt-6">
+            <!-- Prev on left -->
+            <button class="secondary" @click="prev" :disabled="loading">قبلی</button>
+            <!-- Next on right -->
+            <button class="primary" @click="next" :disabled="loading">{{ slide<4?'بعدی':'ثبت‌نام' }}</button>
+          </div>
+          
+          <div v-if="loading" class="spinner"></div>
+          <p class="error">{{ errorMessage }}</p>
+        </div>
+
+        <!-- Completion Slide -->
+        <div v-if="mode==='register' && slide===5" class="slide" key="done">
+          <h3 class="text-2xl font-bold text-white mb-4">تبریک! ثبت‌نام با موفقیت انجام شد 🎉</h3>
+          <button class="primary" @click="goToLogin">ورود</button>
+        </div>
+      </transition>
+
+      <div class="progress-bar mt-8" v-if="mode==='register'">
+        <div class="progress" :style="{ width: progress+'%' }"></div>
+      </div>
     </div>
   </div>
-
   <script src="/js/auth.js"></script>
 </body>
 </html>
