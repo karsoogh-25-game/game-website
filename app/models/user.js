@@ -3,13 +3,19 @@ const bcrypt        = require('bcrypt');
 
 module.exports = (sequelize) => {
   const User = sequelize.define('User', {
-    firstName:   { type: DataTypes.STRING, allowNull: false },
-    lastName:    { type: DataTypes.STRING, allowNull: false },
-    phoneNumber: { type: DataTypes.STRING, allowNull: false, unique: true },
-    nationalId:  { type: DataTypes.STRING, allowNull: false, unique: true },
-    email:       { type: DataTypes.STRING, allowNull: false, unique: true, validate: { isEmail: true } },
-    password:    { type: DataTypes.STRING, allowNull: false },
-    isActive:    { type: DataTypes.BOOLEAN, defaultValue: false }
+    firstName:   { type: DataTypes.STRING,  allowNull: false },
+    lastName:    { type: DataTypes.STRING,  allowNull: false },
+    phoneNumber: { type: DataTypes.STRING,  allowNull: false, unique: true },
+    nationalId:  { type: DataTypes.STRING,  allowNull: false, unique: true },
+    email:       { type: DataTypes.STRING,  allowNull: false, unique: true, validate: { isEmail: true } },
+    password:    { type: DataTypes.STRING,  allowNull: false },
+    isActive:    { type: DataTypes.BOOLEAN, defaultValue: false },
+    role:        {
+      type: DataTypes.ENUM('user', 'mentor'),
+      allowNull: false,
+      defaultValue: 'user',
+      comment: 'نقش کاربر: user یا mentor'
+    }
   }, {
     hooks: {
       beforeCreate: async (user) => {
