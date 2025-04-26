@@ -14,10 +14,10 @@
   <!-- دکمه خروج -->
   <button class="logout-btn" onclick="window.location='/logout'">خروج</button>
 
-  <div id="adminApp" class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-2xl max-w-6xl mx-auto mt-20 flex">
+  <div id="adminApp" class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-2xl mx-auto mt-20 flex">
 
     <!-- منوی کناری -->
-    <nav class="w-1/5 text-white pr-4 border-l border-gray-700">
+    <nav class="w-1/5 text-white p-4 border-l border-gray-700">
       <ul>
         <li v-for="sec in sections" :key="sec.key"
             @click="activeSection = sec.key"
@@ -29,7 +29,7 @@
     </nav>
 
     <!-- محتوای اصلی -->
-    <div class="w-4/5 pl-6 text-white overflow-x-auto">
+    <div class="w-4/5 p-4 text-white overflow-x-auto">
       <!-- کاربران -->
       <section v-show="activeSection === 'users'">
         <h2 class="text-2xl font-bold mb-4">مدیریت کاربران</h2>
@@ -53,22 +53,22 @@
             <tr v-for="(u, idx) in users" :key="u.id" class="hover:bg-gray-700">
               <td class="border px-3 py-1">{{ idx + 1 }}</td>
               <td class="border px-3 py-1">
-                <input v-model="u.firstName" class="input-field w-full text-sm">
+                <input v-model="u.firstName" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <input v-model="u.lastName" class="input-field w-full text-sm">
+                <input v-model="u.lastName" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <input v-model="u.phoneNumber" class="input-field w-full text-sm">
+                <input v-model="u.phoneNumber" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <input v-model="u.nationalId" class="input-field w-full text-sm">
+                <input v-model="u.nationalId" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <input v-model="u.email" class="input-field w-full text-sm">
+                <input v-model="u.email" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <select v-model="u.role" class="input-field w-full text-sm">
+                <select v-model="u.role" class="admin-input-field w-full text-sm">
                   <option value="user">کاربر</option>
                   <option value="mentor">منتور</option>
                 </select>
@@ -77,7 +77,7 @@
                 <input type="checkbox" v-model="u.isActive">
               </td>
               <td class="border px-3 py-1 text-center">
-                <button class="primary px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button>
+                <button class="px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button>
               </td>
               <td class="border px-3 py-1 text-center">
                 <button class="danger px-2 py-1 text-sm" @click="deleteUser(u)">حذف</button>
@@ -110,22 +110,22 @@
             <tr v-for="(u, idx) in mentors" :key="u.id" class="hover:bg-gray-700">
               <td class="border px-3 py-1">{{ idx + 1 }}</td>
               <td class="border px-3 py-1">
-                <input v-model="u.firstName" class="input-field w-full text-sm">
+                <input v-model="u.firstName" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <input v-model="u.lastName" class="input-field w-full text-sm">
+                <input v-model="u.lastName" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <input v-model="u.phoneNumber" class="input-field w-full text-sm">
+                <input v-model="u.phoneNumber" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <input v-model="u.nationalId" class="input-field w-full text-sm">
+                <input v-model="u.nationalId" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <input v-model="u.email" class="input-field w-full text-sm">
+                <input v-model="u.email" class="admin-input-field w-full text-sm">
               </td>
               <td class="border px-3 py-1">
-                <select v-model="u.role" class="input-field w-full text-sm">
+                <select v-model="u.role" class="admin-input-field w-full text-sm">
                   <option value="user">کاربر</option>
                   <option value="mentor">منتور</option>
                 </select>
@@ -134,7 +134,7 @@
                 <input type="checkbox" v-model="u.isActive">
               </td>
               <td class="border px-3 py-1 text-center">
-                <button class="primary px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button>
+                <button class="px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button>
               </td>
               <td class="border px-3 py-1 text-center">
                 <button class="danger px-2 py-1 text-sm" @click="deleteUser(u)">حذف</button>
