@@ -11,31 +11,137 @@
 </head>
 <body class="bg-pattern min-h-screen p-4">
   <button class="logout-btn absolute top-4 left-4" onclick="window.location='/logout'">خروج</button>
-  <div id="adminApp" class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-8 rounded-2xl max-w-4xl mx-auto mt-20">
-    <h2 class="text-3xl font-bold text-white mb-6">پنل مدیریت کاربران</h2>
-    <input v-model="search" @input="fetchUsers" placeholder="جستجو…" class="search-input mb-6">
-    <table class="admin-table w-full">
-      <thead>
-        <tr>
-          <th class="px-4 py-2">ردیف</th><th class="px-4 py-2">نام</th><th class="px-4 py-2">نام‌خانوادگی</th>
-          <th class="px-4 py-2">موبایل</th><th class="px-4 py-2">کد ملی</th><th class="px-4 py-2">ایمیل</th><th class="px-4 py-2">فعال؟</th><th class="px-4 py-2">عملیات</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(user, idx) in users" :key="user.id" class="hover:bg-gray-700">
-          <td class="border px-4 py-2">{{ idx+1 }}</td>
-          <td class="border px-4 py-2"><input v-model="user.firstName" class="input-field w-full"></td>
-          <td class="border px-4 py-2"><input v-model="user.lastName" class="input-field w-full"></td>
-          <td class="border px-4 py-2"><input v-model="user.phoneNumber" class="input-field w-full"></td>
-          <td class="border px-4 py-2"><input v-model="user.nationalId" class="input-field w-full"></td>
-          <td class="border px-4 py-2"><input v-model="user.email" class="input-field w-full"></td>
-          <td class="border px-4 py-2 text-center"><input type="checkbox" v-model="user.isActive"></td>
-          <td class="border px-4 py-2 text-center"><button class="primary" @click="updateUser(user)">ذخیره</button></td>
-        </tr>
-      </tbody>
-    </table>
-    <p class="error mt-4" v-if="error">{{ error }}</p>
+
+  <div id="adminApp" class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-8 rounded-2xl max-w-5xl mx-auto mt-20 flex">
+
+    <!-- منوی کناری -->
+    <nav class="w-1/4 text-white">
+      <ul>
+        <li v-for="sec in sections" :key="sec.key"
+            @click="activeSection = sec.key"
+            class="py-2 px-4 cursor-pointer hover:bg-gray-700"
+            :class="{'bg-gray-700 font-bold': activeSection === sec.key}">
+          {{ sec.label }}
+        </li>
+      </ul>
+    </nav>
+
+    <!-- محتوای اصلی -->
+    <div class="w-3/4 pr-6 text-white">
+
+      <!-- بخش کاربران -->
+      <div v-show="activeSection === 'users'">
+        <h2 class="text-3xl font-bold mb-6">مدیریت کاربران</h2>
+        <input v-model="search" @input="fetchUsers" placeholder="جستجو…" class="search-input mb-6 w-full">
+        <table class="admin-table w-full">
+          <thead>
+            <tr>
+              <th class="px-4 py-2">ردیف</th>
+              <th class="px-4 py-2">نام</th>
+              <th class="px-4 py-2">نام‌خانوادگی</th>
+              <th class="px-4 py-2">موبایل</th>
+              <th class="px-4 py-2">کد ملی</th>
+              <th class="px-4 py-2">ایمیل</th>
+              <th class="px-4 py-2">نقش</th>
+              <th class="px-4 py-2">فعال؟</th>
+              <th class="px-4 py-2">عملیات</th>
+              <th class="px-4 py-2">حذف</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(user, idx) in users" :key="user.id" class="hover:bg-gray-700">
+              <td class="border px-4 py-2">{{ idx + 1 }}</td>
+              <td class="border px-4 py-2"><input v-model="user.firstName" class="input-field w-full"></td>
+              <td class="border px-4 py-2"><input v-model="user.lastName" class="input-field w-full"></td>
+              <td class="border px-4 py-2"><input v-model="user.phoneNumber" class="input-field w-full"></td>
+              <td class="border px-4 py-2"><input v-model="user.nationalId" class="input-field w-full"></td>
+              <td class="border px-4 py-2"><input v-model="user.email" class="input-field w-full"></td>
+              <td class="border px-4 py-2">
+                <select v-model="user.role" class="input-field w-full">
+                  <option value="user">کاربر</option>
+                  <option value="mentor">منتور</option>
+                </select>
+              </td>
+              <td class="border px-4 py-2 text-center">
+                <input type="checkbox" v-model="user.isActive">
+              </td>
+              <td class="border px-4 py-2 text-center">
+                <button class="primary" @click="updateUser(user)">ذخیره</button>
+              </td>
+              <td class="border px-4 py-2 text-center">
+                <button class="danger" @click="deleteUser(user)">حذف</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="error mt-4 text-red-400" v-if="error">{{ error }}</p>
+      </div>
+
+      <!-- بخش منتورها -->
+      <div v-show="activeSection === 'mentors'">
+        <h2 class="text-3xl font-bold mb-6">مدیریت منتورها</h2>
+        <input v-model="searchMentor" @input="fetchMentors" placeholder="جستجو…" class="search-input mb-6 w-full">
+        <table class="admin-table w-full">
+          <thead>
+            <tr>
+              <th class="px-4 py-2">ردیف</th>
+              <th class="px-4 py-2">نام</th>
+              <th class="px-4 py-2">نام‌خانوادگی</th>
+              <th class="px-4 py-2">موبایل</th>
+              <th class="px-4 py-2">کد ملی</th>
+              <th class="px-4 py-2">ایمیل</th>
+              <th class="px-4 py-2">نقش</th>
+              <th class="px-4 py-2">فعال؟</th>
+              <th class="px-4 py-2">عملیات</th>
+              <th class="px-4 py-2">حذف</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(user, idx) in mentors" :key="user.id" class="hover:bg-gray-700">
+              <td class="border px-4 py-2">{{ idx + 1 }}</td>
+              <td class="border px-4 py-2"><input v-model="user.firstName" class="input-field w-full"></td>
+              <td class="border px-4 py-2"><input v-model="user.lastName" class="input-field w-full"></td>
+              <td class="border px-4 py-2"><input v-model="user.phoneNumber" class="input-field w-full"></td>
+              <td class="border px-4 py-2"><input v-model="user.nationalId" class="input-field w-full"></td>
+              <td class="border px-4 py-2"><input v-model="user.email" class="input-field w-full"></td>
+              <td class="border px-4 py-2">
+                <select v-model="user.role" class="input-field w-full">
+                  <option value="user">کاربر</option>
+                  <option value="mentor">منتور</option>
+                </select>
+              </td>
+              <td class="border px-4 py-2 text-center">
+                <input type="checkbox" v-model="user.isActive">
+              </td>
+              <td class="border px-4 py-2 text-center">
+                <button class="primary" @click="updateUser(user)">ذخیره</button>
+              </td>
+              <td class="border px-4 py-2 text-center">
+                <button class="danger" @click="deleteUser(user)">حذف</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="error mt-4 text-red-400" v-if="error">{{ error }}</p>
+      </div>
+
+      <!-- بقیه بخش‌ها (گروه‌ها، آیتم‌ها، محتواها) -->
+      <div v-show="activeSection === 'groups'">
+        <h2 class="text-3xl font-bold mb-6">گروه‌ها</h2>
+        <!-- خالی -->
+      </div>
+      <div v-show="activeSection === 'items'">
+        <h2 class="text-3xl font-bold mb-6">آیتم‌ها</h2>
+        <!-- خالی -->
+      </div>
+      <div v-show="activeSection === 'contents'">
+        <h2 class="text-3xl font-bold mb-6">محتواها</h2>
+        <!-- خالی -->
+      </div>
+
+    </div>
   </div>
+
   <script src="/js/admin.js"></script>
 </body>
 </html>
