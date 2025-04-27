@@ -18,17 +18,48 @@
       display: block;
       opacity: 1;
     }
-    /* کلاسِ شروع fade-out */
+
+    .alert-container {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: 90%;
+      max-width: 500px;
+    }
+
+    .alert-box {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      opacity: 0;
+      transition: opacity 0.5s ease-out;
+    }
+
+    .alert-box.show {
+      opacity: 1;
+    }
+
+    .alert-box .icon {
+      margin-right: 10px;
+    }
+
+    /* Additional styles to make sections fade in and fade out smoothly */
     .content-section.fade-out {
       opacity: 0 !important;
     }
-    /* کلاسِ شروع fade-in */
     .content-section.fade-in {
       opacity: 1 !important;
     }
   </style>
 </head>
 <body class="bg-pattern font-wazir flex h-screen overflow-hidden">
+
+  <!-- Alert Box Container -->
+  <div class="alert-container" id="alert-container"></div>
 
   <!-- Sidebar -->
   <aside class="hidden md:flex flex-col w-64 bg-gray-900 border-l border-gray-800">
@@ -107,7 +138,7 @@
 
     <!-- Sections -->
     <main class="flex-1 overflow-auto p-4 md:p-8">
-      <!-- Dashboard -->
+      <div class="alert-container" id="alert-container"></div>
       <section id="dashboard" class="content-section active">
         <div class="mb-8 text-center">
           <h2 class="text-3xl font-bold text-white mb-2">خوش آمدی، <%= user.firstName %>!</h2>
@@ -147,233 +178,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      // sidebar toggles
-      const mobileMenu = document.getElementById('mobile-menu');
-      document.getElementById('open-mobile-menu').onclick = () => mobileMenu.classList.replace('translate-x-full','translate-x-0');
-      document.getElementById('close-mobile-menu').onclick = () => mobileMenu.classList.replace('translate-x-0','translate-x-full');
-
-      // tabs & sections
-      const menuItems = Array.from(document.querySelectorAll('.menu-item'));
-      const pageTitle = document.getElementById('page-title');
-
-      function showSection(id){
-        const current = document.querySelector('.content-section.active');
-        const next    = document.getElementById(id);
-        if (current.id === id) return;
-
-        current.classList.remove('fade-in');
-        current.classList.add('fade-out');
-        current.addEventListener('transitionend', function handler(){
-          current.classList.remove('active','fade-out');
-          current.removeEventListener('transitionend', handler);
-          next.classList.add('active','fade-in');
-          pageTitle.textContent = menuItems.find(i => i.dataset.section===id).innerText;
-        });
-      }
-
-      menuItems.forEach(item=>{
-        item.addEventListener('click', e=>{
-          e.preventDefault();
-          menuItems.forEach(i=>i.classList.remove('active'));
-          item.classList.add('active');
-          showSection(item.dataset.section);
-        });
-      });
-
-      // dashboard cards
-      const cardScore         = document.getElementById('card-score');
-      const cardGroup         = document.getElementById('card-group');
-      const cardAnnouncements = document.getElementById('card-announcements');
-
-      // group logic
-      const groupArea = document.getElementById('group-area');
-
-      async function loadMyGroup(){
-        cardScore.textContent = '—';
-        cardGroup.textContent = '—';
-        try {
-          const r = await axios.get('/api/groups/my');
-          if (!r.data.member) {
-            renderNotMember();
-          } else {
-            const g = r.data.group;
-            cardScore.textContent = g.score;
-            cardGroup.textContent = g.name;
-            renderGroupDashboard(g, r.data.role);
-          }
-        } catch(err){
-          console.error(err);
-          groupArea.innerHTML = `<p class="error text-center">خطا در بارگذاری وضعیت گروه: ${err.response?.data?.message||err.message}</p>`;
-        }
-      }
-
-      function renderNotMember(){
-        groupArea.innerHTML = `
-          <div class="bg-gray-700 rounded-lg p-6 text-center">
-            <p class="text-gray-300 mb-4">شما عضو هیچ گروهی نیستید.</p>
-            <button id="btn-create" class="btn-primary px-3 py-1 text-sm mx-2">ایجاد گروه</button>
-            <button id="btn-join"   class="btn-secondary px-3 py-1 text-sm mx-2">پیوستن</button>
-            <p id="group-error" class="error mt-2"></p>
-          </div>`;
-        document.getElementById('btn-create').onclick = renderCreateForm;
-        document.getElementById('btn-join').onclick   = renderJoinForm;
-      }
-
-      function renderCreateForm(){
-        groupArea.innerHTML = `
-          <div class="bg-gray-700 rounded-lg p-6 max-w-md mx-auto">
-            <h3 class="text-white font-bold mb-4">ایجاد گروه</h3>
-            <input id="inp-name" class="input-field w-full mb-4" placeholder="نام گروه…" />
-            <div class="flex justify-end">
-              <button id="btn-cancel-create" class="btn-secondary px-3 py-1 text-sm mx-2">انصراف</button>
-              <button id="btn-do-create" class="btn-primary px-3 py-1 text-sm mx-2">بساز</button>
-            </div>
-            <p id="group-error" class="error mt-2"></p>
-          </div>`;
-        document.getElementById('btn-do-create').onclick = async () => {
-          try {
-            const name = document.getElementById('inp-name').value;
-            await axios.post('/api/groups/create', { name });
-            loadMyGroup();
-          } catch(e) {
-            document.getElementById('group-error').innerText = e.response.data.message;
-          }
-        };
-        document.getElementById('btn-cancel-create').onclick = loadMyGroup;
-      }
-
-      function renderJoinForm(){
-        groupArea.innerHTML = `
-          <div class="bg-gray-700 rounded-lg p-6 max-w-md mx-auto">
-            <h3 class="text-white font-bold mb-4">پیوستن به گروه</h3>
-            <input id="inp-code" class="input-field w-full mb-4" placeholder="کد ۸ حرفی…" maxlength="8" />
-            <div class="flex justify-end">
-              <button id="btn-cancel-join" class="btn-secondary px-3 py-1 text-sm mx-2">انصراف</button>
-              <button id="btn-do-join"   class="btn-primary px-3 py-1 text-sm mx-2">پیوستن</button>
-            </div>
-            <p id="group-error" class="error mt-2"></p>
-          </div>`;
-        document.getElementById('btn-do-join').onclick = async () => {
-          try {
-            const code = document.getElementById('inp-code').value;
-            await axios.post('/api/groups/add-member', { code });
-            loadMyGroup();
-          } catch(e) {
-            document.getElementById('group-error').innerText = e.response.data.message;
-          }
-        };
-        document.getElementById('btn-cancel-join').onclick = loadMyGroup;
-      }
-
-      function renderGroupDashboard(g, role){
-        groupArea.innerHTML = `
-          <div class="bg-gray-700 rounded-lg p-6 max-w-2xl mx-auto space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-600 p-4 rounded text-center">
-              <div><p class="text-gray-400 text-sm">نام گروه</p><p class="text-white">${g.name}</p></div>
-              <div><p class="text-gray-400 text-sm">امتیاز</p><p class="text-white">${g.score}</p></div>
-              <div><p class="text-gray-400 text-sm">رتبه</p><p class="text-white">${g.rank}</p></div>
-            </div>
-            <!-- New: 8-digit code copy block -->
-            <div class="flex items-center justify-center space-x-2 mx-auto w-max bg-gray-600 p-3 rounded">
-              <span class="text-gray-300 text-sm">کد گروه:</span>
-              <input id="code-8" type="text" readonly value="${g.code}"
-                     class="input-field text-center w-28 text-sm bg-gray-700 border-gray-500" />
-              <button class="btn-primary px-2 py-1 text-sm" onclick="navigator.clipboard.writeText('${g.code}')">
-                <i class="fas fa-copy ml-1"></i> کپی
-              </button>
-            </div>
-            <h4 class="text-white font-bold">اعضا</h4>
-            <table class="min-w-full bg-gray-600 rounded overflow-hidden text-sm">
-              <thead><tr class="bg-gray-700 text-gray-300"><th class="px-3 py-1">نام</th><th class="px-3 py-1">نقش</th></tr></thead>
-              <tbody>${g.members.map(m=>`
-                <tr class="border-b border-gray-500">
-                  <td class="px-3 py-1 text-white">${m.name}</td>
-                  <td class="px-3 py-1 text-gray-400">${m.role==='leader'?'سرگروه':'عضو'}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-            <div class="flex justify-center space-x-4">
-              <button id="btn-leave" class="btn-secondary px-3 py-1 text-sm mx-2">خروج</button>
-              ${role==='leader' ? `<button id="btn-delete" class="btn-primary px-3 py-1 text-sm mx-2">حذف</button>` : ``}
-            </div>
-            <p id="group-error" class="error text-center"></p>
-          </div>`;
-        document.getElementById('btn-leave').onclick = async () => {
-          if(!confirm('مطمئنی؟')) return;
-          try { await axios.post('/api/groups/leave',{ groupId:g.id }); loadMyGroup(); }
-          catch(e){ document.getElementById('group-error').innerText = e.response.data.message; }
-        };
-        if(role==='leader'){
-          document.getElementById('btn-delete').onclick = async () => {
-            if(!confirm('حذف؟')) return;
-            try{ await axios.delete(`/api/groups/${g.id}`); loadMyGroup(); }
-            catch(e){ document.getElementById('group-error').innerText = e.response.data.message; }
-          };
-        }
-      }
-
-      // real-time via socket.io
-      const socket = io();
-      socket.on('memberJoined', loadMyGroup);
-      socket.on('memberRemoved', loadMyGroup);
-      socket.on('groupDeleted', renderNotMember);
-
-      // Notifications button handler
-      document.getElementById('btn-notifications').addEventListener('click', e=>{
-        e.preventDefault();
-        menuItems.forEach(i => i.classList.toggle('active', i.dataset.section==='announcements'));
-        showSection('announcements');
-      });
-
-      // Refresh button handler
-      document.getElementById('btn-refresh').addEventListener('click', e=>{
-        e.preventDefault();
-        const active = document.querySelector('.content-section.active').id;
-        if (active==='groups') loadMyGroup();
-        else if (active==='dashboard') {
-          if (typeof loadDashboard==='function') loadDashboard();
-          else loadMyGroup();
-        }
-      });
-      // Refresh button handler
-      const btnRefresh = document.getElementById('btn-refresh');
-      btnRefresh.addEventListener('click', e=>{
-        e.preventDefault();
-        const active = document.querySelector('.content-section.active').id;
-        if (active==='groups') loadMyGroup();
-        else if (active==='dashboard') {
-          if (typeof loadDashboard==='function') loadDashboard();
-          else loadMyGroup();
-        }
-      });
-      // خودکارسازی کلیک روی دکمه‌ی رفرش
-      btnRefresh.click();
-
-      // trigger load on initial groups tab click
-      menuItems.forEach(i => i.addEventListener('click', () => {
-        if(i.dataset.section==='groups') loadMyGroup();
-      }));
-    });
-
-    // helper: fade out an element, return Promise when done
-    function fadeOutElement(el) {
-      return new Promise(resolve => {
-        el.classList.remove('fade-in');
-        el.classList.add('fade-out');
-        el.addEventListener('transitionend', function handler() {
-          el.removeEventListener('transitionend', handler);
-          resolve();
-        });
-      });
-    }
-
-    // helper: fade in an element
-    function fadeInElement(el) {
-      el.classList.remove('fade-out');
-      el.classList.add('fade-in');
-    }
-  </script>
+  <script src="/js/dashboard.js"></script> <!-- External JS file for handling alert notifications -->
 </body>
 </html>
