@@ -39,47 +39,46 @@ const upload = multer({
   dest: path.join(__dirname, 'public', 'uploads'),
   limits: { fileSize: 10 * 1024 * 1024 }  // max 10MB
 });
-// make it available in req.app.locals.upload
 app.locals.upload = upload;
 
-// ————— Routes —————
-
-// Auth routes & page
-app.get('/', (req, res) => res.render('auth'));
-app.use('/', require('./routes/auth'));
-
-// Admin guard middleware
+// ————— Middlewares —————
 function isAdmin(req, res, next) {
   if (req.session.adminId) return next();
   res.redirect('/');
 }
-
-// Admin routes & announcement-CRUD
-const adminRouter = require('./routes/admin')(io);
-app.use('/admin', isAdmin, adminRouter);
-
-// Mount announcements routes under admin (uses the same isAdmin guard)
-app.use(
-  '/admin/api/announcements',
-  isAdmin,
-  require('./routes/announcements')(io)
-);
-
-// User guard middleware
 function isUser(req, res, next) {
   if (req.session.userId) return next();
   res.redirect('/');
 }
 
-// User (dashboard) routes
-app.use('/dashboard', isUser, require('./routes/user'));
+// ————— Routes —————
 
-// Group-routes (panel grouping)
+// Auth routes & login page
+app.get('/', (req, res) => res.render('auth'));
+app.use('/', require('./routes/auth'));
+
+// Admin panel routes
+const adminRouter = require('./routes/admin')(io);
+app.use('/admin', isAdmin, adminRouter);
+
+// Announcements CRUD API
+const announcementRoutes = require('./routes/announcements')(io);
+app.use('/admin/api/announcements', isAdmin, announcementRoutes);
+
+// Admin Groups CRUD API  (✔ اضافه شده برای گروه‌ها)
+const adminGroupsRouter = require('./routes/adminGroups')(io);
+app.use('/admin/api/groups', isAdmin, adminGroupsRouter);
+
+// User panel (dashboard)
 const groupRoutes = require('./routes/group');
 app.use('/api/groups', isUser, groupRoutes);
 
+app.use('/dashboard', isUser, require('./routes/user'));
+
 // ————— Socket.IO connection logging —————
-io.on('connection', socket => console.log('Socket connected:', socket.id));
+io.on('connection', socket => {
+  console.log('Socket connected:', socket.id);
+});
 
 // ————— Seed default admin & start server —————
 async function seedAdmin() {

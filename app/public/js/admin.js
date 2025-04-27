@@ -6,6 +6,7 @@ new Vue({
     users: [],
     mentors: [],
     announcements: [],
+    groups: [],
     search: '',
     searchMentor: '',
     form: {
@@ -44,6 +45,16 @@ new Vue({
       this.announcements = this.announcements.filter(a => a.id !== id);
     });
 
+    // سوکت رویدادهای گروه
+    socket.on('groupCreated', grp => this.groups.unshift(grp));
+    socket.on('groupUpdated', grp => {
+      const i = this.groups.findIndex(g => g.id === grp.id);
+      if (i !== -1) this.$set(this.groups, i, grp);
+    });
+    socket.on('groupDeleted', ({ id }) => {
+      this.groups = this.groups.filter(g => g.id !== id);
+    });
+
     this.loadSection();
   },
   mounted() {
@@ -61,6 +72,7 @@ new Vue({
       const s = document.getElementById('loading-spinner');
       if (s) s.style.display = isLoading ? 'flex' : 'none';
     },
+
     // نوتیفیکیشن
     sendNotification(type, text) {
       const colors = { success: 'bg-green-500', error: 'bg-red-500' };
@@ -79,9 +91,10 @@ new Vue({
 
     // بارگذاری هر بخش
     loadSection() {
-      if (this.activeSection === 'users')    this.fetchUsers();
-      if (this.activeSection === 'mentors')  this.fetchMentors();
+      if (this.activeSection === 'users')         this.fetchUsers();
+      if (this.activeSection === 'mentors')       this.fetchMentors();
       if (this.activeSection === 'announcements') this.fetchAnnouncements();
+      if (this.activeSection === 'groups')        this.fetchGroups();
     },
 
     // === Users & Mentors ===
@@ -172,7 +185,6 @@ new Vue({
         if (this.form.attachment) {
           data.append('attachment', this.form.attachment);
         }
-
         if (this.editingId) {
           await axios.put(`/admin/api/announcements/${this.editingId}`, data);
           this.sendNotification('success', 'اطلاعیه ویرایش شد');
@@ -195,6 +207,38 @@ new Vue({
         this.sendNotification('success', 'اطلاعیه حذف شد');
       } catch {
         this.sendNotification('error', 'خطا در حذف اطلاعیه');
+      }
+    },
+
+    // === Groups ===
+    async fetchGroups() {
+      try {
+        const res = await axios.get('/admin/api/groups');
+        this.groups = res.data; // انتظار: هر شی شامل members array و leader object
+      } catch {
+        this.sendNotification('error', 'خطا در دریافت گروه‌ها');
+      }
+    },
+    async updateGroup(g) {
+      try {
+        await axios.put(`/admin/api/groups/${g.id}`, {
+          name:       g.name,
+          code:       g.code,
+          walletCode: g.walletCode,
+          score:      g.score
+        });
+        this.sendNotification('success', 'گروه بروز شد');
+      } catch {
+        this.sendNotification('error', 'خطا در ذخیره گروه');
+      }
+    },
+    async deleteGroup(g) {
+      if (!confirm(`آیا از حذف گروه "${g.name}" مطمئن هستید؟`)) return;
+      try {
+        await axios.delete(`/admin/api/groups/${g.id}`);
+        this.sendNotification('success', 'گروه حذف شد');
+      } catch {
+        this.sendNotification('error', 'خطا در حذف گروه');
       }
     }
   }
