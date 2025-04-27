@@ -12,10 +12,11 @@ const sequelize = new Sequelize({
 const db = { sequelize };
 
 // load each model, passing both sequelize instance and DataTypes
-db.User        = require('./user')(sequelize, DataTypes);
-db.Admin       = require('./admin')(sequelize, DataTypes);
-db.Group       = require('./group')(sequelize, DataTypes);
-db.GroupMember = require('./GroupMember')(sequelize, DataTypes);
+db.User         = require('./user')(sequelize, DataTypes);
+db.Admin        = require('./admin')(sequelize, DataTypes);
+db.Group        = require('./group')(sequelize, DataTypes);
+db.GroupMember  = require('./GroupMember')(sequelize, DataTypes);
+db.Announcement = require('./announcement')(sequelize, DataTypes);
 
 // set up associations
 Object.values(db).forEach(model => {

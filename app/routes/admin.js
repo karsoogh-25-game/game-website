@@ -10,6 +10,9 @@ module.exports = (io) => {
   // صفحات و APIها
   router.get('/', ctrl.renderAdminPage);
 
+  // Announcement routes
+  router.use('/api/announcements', require('./announcements')(io));
+
   // کاربران
   router.get('/api/users', ctrl.listUsers);
   router.put('/api/users/:id', ctrl.updateUser);

@@ -11,13 +11,25 @@
 </head>
 <body class="bg-pattern min-h-screen p-4 relative">
 
-  <!-- دکمه خروج -->
-  <button class="logout-btn" onclick="window.location='/logout'">خروج</button>
+  <!-- دکمه‌های بالا: رفرش + خروج -->
+  <div class="flex justify-end space-x-2 mb-4">
+    <button id="refresh-btn" class="logout-btn">رفرش</button>
+    <button class="logout-btn" onclick="window.location='/logout'">خروج</button>
+  </div>
 
-  <div id="adminApp" class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-2xl mx-auto mt-20 flex">
+  <!-- Alert Container -->
+  <div id="alert-container" class="fixed top-4 right-4 z-50"></div>
+
+  <!-- Loading Spinner -->
+  <div id="loading-spinner"
+       class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div class="loader animate-spin ease-linear rounded-full border-8 border-t-8 border-gray-200 h-16 w-16"></div>
+  </div>
+
+  <div id="adminApp" class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-2xl mx-auto mt-20 flex flex-wrap">
 
     <!-- منوی کناری -->
-    <nav class="w-1/5 text-white p-4 border-l border-gray-700">
+    <nav class="w-full md:w-1/5 text-white p-4 border-l border-gray-700 mb-6 md:mb-0">
       <ul>
         <li v-for="sec in sections" :key="sec.key"
             @click="activeSection = sec.key"
@@ -29,7 +41,8 @@
     </nav>
 
     <!-- محتوای اصلی -->
-    <div class="w-4/5 p-4 text-white overflow-x-auto">
+    <div class="w-full md:w-4/5 p-4 text-white overflow-x-auto">
+
       <!-- کاربران -->
       <section v-show="activeSection === 'users'">
         <h2 class="text-2xl font-bold mb-4">مدیریت کاربران</h2>
@@ -37,51 +50,28 @@
         <table class="admin-table w-full">
           <thead>
             <tr>
-              <th class="px-3 py-1">#</th>
-              <th class="px-3 py-1">نام</th>
-              <th class="px-3 py-1">نام‌خانوادگی</th>
-              <th class="px-3 py-1">موبایل</th>
-              <th class="px-3 py-1">کد ملی</th>
-              <th class="px-3 py-1">ایمیل</th>
-              <th class="px-3 py-1">نقش</th>
-              <th class="px-3 py-1">فعال</th>
-              <th class="px-3 py-1">ذخیره</th>
-              <th class="px-3 py-1">حذف</th>
+              <th>#</th><th>نام</th><th>نام‌خانوادگی</th><th>موبایل</th>
+              <th>کد ملی</th><th>ایمیل</th><th>نقش</th><th>فعال</th>
+              <th>ذخیره</th><th>حذف</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(u, idx) in users" :key="u.id" class="hover:bg-gray-700">
-              <td class="border px-3 py-1">{{ idx + 1 }}</td>
-              <td class="border px-3 py-1">
-                <input v-model="u.firstName" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
-                <input v-model="u.lastName" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
-                <input v-model="u.phoneNumber" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
-                <input v-model="u.nationalId" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
-                <input v-model="u.email" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
+              <td class="border px-2">{{ idx + 1 }}</td>
+              <td class="border px-2"><input v-model="u.firstName" class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2"><input v-model="u.lastName"  class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2"><input v-model="u.phoneNumber" class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2"><input v-model="u.nationalId"  class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2"><input v-model="u.email"       class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2">
                 <select v-model="u.role" class="admin-input-field w-full text-sm">
                   <option value="user">کاربر</option>
                   <option value="mentor">منتور</option>
                 </select>
               </td>
-              <td class="border px-3 py-1 text-center">
-                <input type="checkbox" v-model="u.isActive">
-              </td>
-              <td class="border px-3 py-1 text-center">
-                <button class="px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button>
-              </td>
-              <td class="border px-3 py-1 text-center">
-                <button class="danger px-2 py-1 text-sm" @click="deleteUser(u)">حذف</button>
-              </td>
+              <td class="border px-2 text-center"><input type="checkbox" v-model="u.isActive"></td>
+              <td class="border px-2 text-center"><button class="px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button></td>
+              <td class="border px-2 text-center"><button class="danger px-2 py-1 text-sm" @click="deleteUser(u)">حذف</button></td>
             </tr>
           </tbody>
         </table>
@@ -94,60 +84,147 @@
         <table class="admin-table w-full">
           <thead>
             <tr>
-              <th class="px-3 py-1">#</th>
-              <th class="px-3 py-1">نام</th>
-              <th class="px-3 py-1">نام‌خانوادگی</th>
-              <th class="px-3 py-1">موبایل</th>
-              <th class="px-3 py-1">کد ملی</th>
-              <th class="px-3 py-1">ایمیل</th>
-              <th class="px-3 py-1">نقش</th>
-              <th class="px-3 py-1">فعال</th>
-              <th class="px-3 py-1">ذخیره</th>
-              <th class="px-3 py-1">حذف</th>
+              <th>#</th><th>نام</th><th>نام‌خانوادگی</th><th>موبایل</th>
+              <th>کد ملی</th><th>ایمیل</th><th>نقش</th><th>فعال</th>
+              <th>ذخیره</th><th>حذف</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(u, idx) in mentors" :key="u.id" class="hover:bg-gray-700">
-              <td class="border px-3 py-1">{{ idx + 1 }}</td>
-              <td class="border px-3 py-1">
-                <input v-model="u.firstName" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
-                <input v-model="u.lastName" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
-                <input v-model="u.phoneNumber" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
-                <input v-model="u.nationalId" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
-                <input v-model="u.email" class="admin-input-field w-full text-sm">
-              </td>
-              <td class="border px-3 py-1">
+              <td class="border px-2">{{ idx + 1 }}</td>
+              <td class="border px-2"><input v-model="u.firstName" class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2"><input v-model="u.lastName"  class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2"><input v-model="u.phoneNumber" class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2"><input v-model="u.nationalId"  class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2"><input v-model="u.email"       class="admin-input-field w-full text-sm"></td>
+              <td class="border px-2">
                 <select v-model="u.role" class="admin-input-field w-full text-sm">
                   <option value="user">کاربر</option>
                   <option value="mentor">منتور</option>
                 </select>
               </td>
-              <td class="border px-3 py-1 text-center">
-                <input type="checkbox" v-model="u.isActive">
-              </td>
-              <td class="border px-3 py-1 text-center">
-                <button class="px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button>
-              </td>
-              <td class="border px-3 py-1 text-center">
-                <button class="danger px-2 py-1 text-sm" @click="deleteUser(u)">حذف</button>
-              </td>
+              <td class="border px-2 text-center"><input type="checkbox" v-model="u.isActive"></td>
+              <td class="border px-2 text-center"><button class="px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button></td>
+              <td class="border px-2 text-center"><button class="danger px-2 py-1 text-sm" @click="deleteUser(u)">حذف</button></td>
             </tr>
           </tbody>
         </table>
       </section>
 
+      <!-- اطلاعیه‌ها -->
+      <section v-show="activeSection === 'announcements'">
+        <h2 class="text-2xl font-bold mb-4">مدیریت اطلاعیه‌ها</h2>
+        <button @click="openCreateForm" class="btn-primary px-4 py-2 mb-4">
+          ایجاد اطلاعیه جدید
+        </button>
+        <table class="admin-table w-full">
+          <thead>
+            <tr>
+              <th>#</th><th>عنوان</th><th>مختصر</th><th>تاریخ</th><th>ویرایش</th><th>حذف</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(a, idx) in announcements" :key="a.id" class="hover:bg-gray-700">
+              <td class="border px-2">{{ idx + 1 }}</td>
+              <td class="border px-2">{{ a.title }}</td>
+              <td class="border px-2">{{ a.shortDescription || '—' }}</td>
+              <td class="border px-2">{{ new Date(a.createdAt).toLocaleDateString('fa-IR') }}</td>
+              <td class="border px-2 text-center">
+                <button class="px-2 py-1 text-sm" @click="openEditForm(a)">ویرایش</button>
+              </td>
+              <td class="border px-2 text-center">
+                <button class="danger px-2 py-1 text-sm" @click="deleteAnnouncement(a)">حذف</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Modal ایجاد/ویرایش -->
+        <div v-if="showForm" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+          <div class="bg-gray-800 p-6 rounded-lg w-2/5">
+            <h3 class="text-xl font-bold mb-4">
+              {{ editingId ? 'ویرایش اطلاعیه' : 'ایجاد اطلاعیه جدید' }}
+            </h3>
+            <div class="mb-3">
+              <label class="block mb-1">عنوان *</label>
+              <input v-model="form.title" class="admin-input-field w-full" />
+            </div>
+            <div class="mb-3">
+              <label class="block mb-1">توضیح مختصر</label>
+              <input v-model="form.shortDescription" class="admin-input-field w-full" />
+            </div>
+            <div class="mb-3">
+              <label class="block mb-1">توضیح مفصل</label>
+              <textarea v-model="form.longDescription" class="admin-input-field w-full h-24"></textarea>
+            </div>
+            <div class="mb-4">
+              <label class="block mb-1">فایل پیوست</label>
+              <input type="file" @change="onFileChange" />
+            </div>
+            <div class="flex justify-end">
+              <button @click="closeForm" class="btn-secondary px-4 py-2 ml-2">انصراف</button>
+              <button @click="saveAnnouncement" class="btn-primary px-4 py-2">
+                {{ editingId ? 'ذخیره' : 'ایجاد' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- گروه‌ها -->
+      <section v-show="activeSection === 'groups'">
+        <h2 class="text-2xl font-bold mb-4">مدیریت گروه‌ها</h2>
+        <table class="admin-table w-full">
+          <thead>
+            <tr>
+              <th class="px-3 py-1">#</th>
+              <th class="px-3 py-1">نام گروه</th>
+              <th class="px-3 py-1">کد (۸ رقمی)</th>
+              <th class="px-3 py-1">کد کیف پول</th>
+              <th class="px-3 py-1">امتیاز</th>
+              <th class="px-3 py-1">تعداد اعضا</th>
+              <th class="px-3 py-1">سرگروه</th>
+              <th class="px-3 py-1">ذخیره</th>
+              <th class="px-3 py-1">حذف</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(g, idx) in groups" :key="g.id" class="hover:bg-gray-700">
+              <td class="border px-2">{{ idx + 1 }}</td>
+              <td class="border px-2">
+                <input v-model="g.name" class="admin-input-field w-full text-sm">
+              </td>
+              <td class="border px-2">
+                <input v-model="g.code" class="admin-input-field w-full text-sm">
+              </td>
+              <td class="border px-2">
+                <input v-model="g.walletCode" class="admin-input-field w-full text-sm">
+              </td>
+              <td class="border px-2">
+                <input type="number" v-model.number="g.score" class="admin-input-field w-full text-sm">
+              </td>
+              <td class="border px-2 text-center">{{ g.members.length }}</td>
+              <td class="border px-2">
+                {{ g.leader.firstName }} {{ g.leader.lastName }}
+              </td>
+              <td class="border px-2 text-center">
+                <button class="px-2 py-1 text-sm" @click="updateGroup(g)">ذخیره</button>
+              </td>
+              <td class="border px-2 text-center">
+                <button class="danger px-2 py-1 text-sm" @click="deleteGroup(g)">
+                  حذف
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      
+
       <!-- بخش‌های خالی -->
-      <section v-show="activeSection === 'groups'"><h2 class="text-2xl font-bold">گروه‌ها</h2></section>
       <section v-show="activeSection === 'items'"><h2 class="text-2xl font-bold">آیتم‌ها</h2></section>
       <section v-show="activeSection === 'contents'"><h2 class="text-2xl font-bold">محتواها</h2></section>
+
     </div>
   </div>
 
