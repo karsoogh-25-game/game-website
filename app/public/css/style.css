@@ -405,3 +405,22 @@ admin-input{
 .content-section.fade-in {
   opacity: 1 !important;
 }
+
+.content-section {
+  opacity: 0;
+  display: none;
+  transition: opacity 0.3s ease;
+}
+.content-section.active {
+  display: block;
+  opacity: 1;
+}
+
+/* کلاسِ شروع fade-out */
+.content-section.fade-out {
+  opacity: 0 !important;
+}
+/* کلاسِ شروع fade-in */
+.content-section.fade-in {
+  opacity: 1 !important;
+}

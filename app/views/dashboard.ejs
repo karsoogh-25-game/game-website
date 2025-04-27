@@ -9,8 +9,23 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* transition for sections */
-    .content-section { opacity: 0; transition: opacity .3s ease; display: none; }
-    .content-section.active { display: block; opacity: 1; }
+    .content-section {
+      opacity: 0;
+      display: none;
+      transition: opacity 0.3s ease;
+    }
+    .content-section.active {
+      display: block;
+      opacity: 1;
+    }
+    /* کلاسِ شروع fade-out */
+    .content-section.fade-out {
+      opacity: 0 !important;
+    }
+    /* کلاسِ شروع fade-in */
+    .content-section.fade-in {
+      opacity: 1 !important;
+    }
   </style>
 </head>
 <body class="bg-pattern font-wazir flex h-screen overflow-hidden">
@@ -81,8 +96,11 @@
         <h1 id="page-title" class="text-white text-xl font-bold">داشبورد</h1>
       </div>
       <div class="flex items-center">
-        <button class="text-gray-400 hover:text-white"><i class="fas fa-refresh text-xl"></i></button>
-        <button class="relative text-gray-400 hover:text-white"><i class="fas fa-bell text-xl"></i><span class="absolute top-2 left-5 w-2 h-2 bg-red-500 rounded-full"></span></button>
+        <!-- Refresh button -->
+        <button id="btn-refresh" class="text-gray-400 hover:text-white"><i class="fas fa-refresh text-xl"></i></button>
+        <!-- Notifications button -->
+        <button id="btn-notifications" class="relative text-gray-400 hover:text-white"><i class="fas fa-bell text-xl"></i><span class="absolute top-2 left-5 w-2 h-2 bg-red-500 rounded-full"></span></button>
+        <!-- Logout button -->
         <button onclick="location.href='/logout'" class="text-gray-400 hover:text-white"><i class="fas fa-sign-out-alt text-xl"></i></button>
       </div>
     </header>
@@ -106,7 +124,7 @@
           </div>
           <div class="bg-gray-700 rounded-lg p-6 text-center">
             <p class="text-gray-400 text-sm">اعلان‌ها</p>
-            <p class="text-white text-2xl font-bold">—</p>
+            <p id="card-announcements" class="text-white text-2xl font-bold">—</p>
           </div>
         </div>
       </section>
@@ -136,39 +154,50 @@
       document.getElementById('open-mobile-menu').onclick = () => mobileMenu.classList.replace('translate-x-full','translate-x-0');
       document.getElementById('close-mobile-menu').onclick = () => mobileMenu.classList.replace('translate-x-0','translate-x-full');
 
-      // tabs
+      // tabs & sections
       const menuItems = Array.from(document.querySelectorAll('.menu-item'));
-      const sections  = Array.from(document.querySelectorAll('.content-section'));
       const pageTitle = document.getElementById('page-title');
+
       function showSection(id){
-        sections.forEach(sec => sec.id===id
-          ? sec.classList.replace('hidden','active')
-          : sec.classList.replace('active','hidden')
-        );
+        const current = document.querySelector('.content-section.active');
+        const next    = document.getElementById(id);
+        if (current.id === id) return;
+
+        current.classList.remove('fade-in');
+        current.classList.add('fade-out');
+        current.addEventListener('transitionend', function handler(){
+          current.classList.remove('active','fade-out');
+          current.removeEventListener('transitionend', handler);
+          next.classList.add('active','fade-in');
+          pageTitle.textContent = menuItems.find(i => i.dataset.section===id).innerText;
+        });
       }
+
       menuItems.forEach(item=>{
         item.addEventListener('click', e=>{
           e.preventDefault();
           menuItems.forEach(i=>i.classList.remove('active'));
           item.classList.add('active');
           showSection(item.dataset.section);
-          pageTitle.textContent = item.innerText;
         });
       });
 
       // dashboard cards
-      const cardScore = document.getElementById('card-score');
-      const cardGroup = document.getElementById('card-group');
+      const cardScore         = document.getElementById('card-score');
+      const cardGroup         = document.getElementById('card-group');
+      const cardAnnouncements = document.getElementById('card-announcements');
 
       // group logic
       const groupArea = document.getElementById('group-area');
 
       async function loadMyGroup(){
-        cardScore.textContent = '—'; cardGroup.textContent = '—';
+        cardScore.textContent = '—';
+        cardGroup.textContent = '—';
         try {
           const r = await axios.get('/api/groups/my');
-          if (!r.data.member) renderNotMember();
-          else {
+          if (!r.data.member) {
+            renderNotMember();
+          } else {
             const g = r.data.group;
             cardScore.textContent = g.score;
             cardGroup.textContent = g.name;
@@ -246,7 +275,6 @@
               <div><p class="text-gray-400 text-sm">امتیاز</p><p class="text-white">${g.score}</p></div>
               <div><p class="text-gray-400 text-sm">رتبه</p><p class="text-white">${g.rank}</p></div>
             </div>
-
             <!-- New: 8-digit code copy block -->
             <div class="flex items-center justify-center space-x-2 mx-auto w-max bg-gray-600 p-3 rounded">
               <span class="text-gray-300 text-sm">کد گروه:</span>
@@ -256,7 +284,6 @@
                 <i class="fas fa-copy ml-1"></i> کپی
               </button>
             </div>
-
             <h4 class="text-white font-bold">اعضا</h4>
             <table class="min-w-full bg-gray-600 rounded overflow-hidden text-sm">
               <thead><tr class="bg-gray-700 text-gray-300"><th class="px-3 py-1">نام</th><th class="px-3 py-1">نقش</th></tr></thead>
@@ -267,7 +294,6 @@
                 </tr>`).join('')}
               </tbody>
             </table>
-
             <div class="flex justify-center space-x-4">
               <button id="btn-leave" class="btn-secondary px-3 py-1 text-sm mx-2">خروج</button>
               ${role==='leader' ? `<button id="btn-delete" class="btn-primary px-3 py-1 text-sm mx-2">حذف</button>` : ``}
@@ -288,17 +314,66 @@
         }
       }
 
-      // real-time
+      // real-time via socket.io
       const socket = io();
       socket.on('memberJoined', loadMyGroup);
       socket.on('memberRemoved', loadMyGroup);
       socket.on('groupDeleted', renderNotMember);
 
-      // trigger on tab
+      // Notifications button handler
+      document.getElementById('btn-notifications').addEventListener('click', e=>{
+        e.preventDefault();
+        menuItems.forEach(i => i.classList.toggle('active', i.dataset.section==='announcements'));
+        showSection('announcements');
+      });
+
+      // Refresh button handler
+      document.getElementById('btn-refresh').addEventListener('click', e=>{
+        e.preventDefault();
+        const active = document.querySelector('.content-section.active').id;
+        if (active==='groups') loadMyGroup();
+        else if (active==='dashboard') {
+          if (typeof loadDashboard==='function') loadDashboard();
+          else loadMyGroup();
+        }
+      });
+      // Refresh button handler
+      const btnRefresh = document.getElementById('btn-refresh');
+      btnRefresh.addEventListener('click', e=>{
+        e.preventDefault();
+        const active = document.querySelector('.content-section.active').id;
+        if (active==='groups') loadMyGroup();
+        else if (active==='dashboard') {
+          if (typeof loadDashboard==='function') loadDashboard();
+          else loadMyGroup();
+        }
+      });
+      // خودکارسازی کلیک روی دکمه‌ی رفرش
+      btnRefresh.click();
+
+      // trigger load on initial groups tab click
       menuItems.forEach(i => i.addEventListener('click', () => {
-        if(i.dataset.section === 'groups') loadMyGroup();
+        if(i.dataset.section==='groups') loadMyGroup();
       }));
     });
+
+    // helper: fade out an element, return Promise when done
+    function fadeOutElement(el) {
+      return new Promise(resolve => {
+        el.classList.remove('fade-in');
+        el.classList.add('fade-out');
+        el.addEventListener('transitionend', function handler() {
+          el.removeEventListener('transitionend', handler);
+          resolve();
+        });
+      });
+    }
+
+    // helper: fade in an element
+    function fadeInElement(el) {
+      el.classList.remove('fade-out');
+      el.classList.add('fade-in');
+    }
   </script>
 </body>
 </html>
