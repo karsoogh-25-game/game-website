@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function(){
     } catch(err){
       console.error(err);
       groupArea.innerHTML = `<p class="error text-center">خطا در بارگذاری وضعیت گروه: ${err.response?.data?.message||err.message}</p>`;
+      sendNotification('error', 'خطا در بارگذاری وضعیت گروه');
     }
   }
 
@@ -87,8 +88,10 @@ document.addEventListener('DOMContentLoaded', function(){
         const name = document.getElementById('inp-name').value;
         await axios.post('/api/groups/create', { name });
         loadMyGroup();
+        sendNotification('success', `گروه "${name}" با موفقیت ایجاد شد.`);
       } catch(e) {
         document.getElementById('group-error').innerText = e.response.data.message;
+        sendNotification('error', 'خطا در ایجاد گروه');
       }
     };
     document.getElementById('btn-cancel-create').onclick = loadMyGroup;
@@ -110,8 +113,10 @@ document.addEventListener('DOMContentLoaded', function(){
         const code = document.getElementById('inp-code').value;
         await axios.post('/api/groups/add-member', { code });
         loadMyGroup();
+        sendNotification('success', 'شما با موفقیت به گروه پیوستید!');
       } catch(e) {
         document.getElementById('group-error').innerText = e.response.data.message;
+        sendNotification('error', 'خطا در پیوستن به گروه');
       }
     };
     document.getElementById('btn-cancel-join').onclick = loadMyGroup;
@@ -125,7 +130,6 @@ document.addEventListener('DOMContentLoaded', function(){
           <div><p class="text-gray-400 text-sm">امتیاز</p><p class="text-white">${g.score}</p></div>
           <div><p class="text-gray-400 text-sm">رتبه</p><p class="text-white">${g.rank}</p></div>
         </div>
-        <!-- New: 8-digit code copy block -->
         <div class="flex items-center justify-center space-x-2 mx-auto w-max bg-gray-600 p-3 rounded">
           <span class="text-gray-300 text-sm">کد گروه:</span>
           <input id="code-8" type="text" readonly value="${g.code}"
@@ -150,19 +154,35 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
         <p id="group-error" class="error text-center"></p>
       </div>`;
+  
     document.getElementById('btn-leave').onclick = async () => {
       if(!confirm('مطمئنی؟')) return;
       try { await axios.post('/api/groups/leave',{ groupId:g.id }); loadMyGroup(); }
       catch(e){ document.getElementById('group-error').innerText = e.response.data.message; }
+      sendNotification('info', 'از گروه خارج شدید');
     };
+  
     if(role==='leader'){
-      document.getElementById('btn-delete').onclick = async () => {
-        if(!confirm('حذف؟')) return;
-        try{ await axios.delete(`/api/groups/${g.id}`); loadMyGroup(); }
-        catch(e){ document.getElementById('group-error').innerText = e.response.data.message; }
+      document.getElementById('btn-delete').onclick = () => {
+        // Show confirmation notification for delete group
+        sendConfirmationNotification('confirm', 'آیا مطمئن هستید که می‌خواهید این گروه را حذف کنید؟', async (confirmed) => {
+          if (confirmed) {
+            try {
+              await axios.delete(`/api/groups/${g.id}`);
+              loadMyGroup();
+              sendNotification('success', 'گروه با موفقیت حذف شد');
+            } catch (e) {
+              document.getElementById('group-error').innerText = e.response.data.message;
+              sendNotification('error', 'خطا در حذف گروه');
+            }
+          } else {
+            sendNotification('info', 'حذف گروه لغو شد');
+          }
+        });
       };
     }
   }
+  
 
   // real-time via socket.io
   const socket = io();
@@ -187,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function(){
       else loadMyGroup();
     }
   });
+  
   // Refresh button handler
   const btnRefresh = document.getElementById('btn-refresh');
   btnRefresh.addEventListener('click', e=>{
@@ -201,7 +222,6 @@ document.addEventListener('DOMContentLoaded', function(){
   // خودکارسازی کلیک روی دکمه‌ی رفرش
   btnRefresh.click();
 
-  // trigger load on initial groups tab click
   menuItems.forEach(i => i.addEventListener('click', () => {
     if(i.dataset.section==='groups') loadMyGroup();
   }));
@@ -273,5 +293,59 @@ function sendNotification(type, text) {
     setTimeout(() => alertContainer.removeChild(notification), 500);
   }, 5000);
 
-  sendNotification('info', 'این یک تست نوتیفیکیشن است');
+
+  function sendConfirmationNotification(type, text, callback) {
+    let alertContainer = document.getElementById('alert-container');
+    
+    // Define different confirmation alert styles
+    const alerts = {
+      confirm: {
+        icon: `<svg class="w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>`,
+        color: "bg-orange-500"
+      }
+    };
+  
+    let notification = document.createElement("div");
+    notification.classList.add('alert-box', alerts.confirm.color, 'text-white', 'flex', 'items-center', 'rounded-md', 'opacity-0', 'relative');
+    notification.innerHTML = `${alerts.confirm.icon}<p>${text}</p>`;
+    
+    // Add 'confirm' and 'cancel' buttons
+    notification.innerHTML += `
+      <button class="btn-primary px-3 py-1 text-sm mx-2" id="btn-confirm">تایید</button>
+      <button class="btn-secondary px-3 py-1 text-sm mx-2" id="btn-cancel">انصراف</button>
+    `;
+    alertContainer.appendChild(notification);
+  
+    // Show the notification with animation
+    setTimeout(() => {
+      notification.classList.add('show');
+    }, 10);
+  
+    // Remove the notification after 10 seconds if no action
+    const timeoutId = setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => alertContainer.removeChild(notification), 500);
+      // Trigger cancel if no action is taken
+      if (callback) callback(false);
+    }, 10000);
+  
+    // Handle the 'confirm' action
+    document.getElementById('btn-confirm').addEventListener('click', () => {
+      clearTimeout(timeoutId);  // Stop auto cancel
+      notification.classList.remove('show');
+      setTimeout(() => alertContainer.removeChild(notification), 500);
+      if (callback) callback(true); // Trigger the callback with 'true' for confirmation
+    });
+  
+    // Handle the 'cancel' action
+    document.getElementById('btn-cancel').addEventListener('click', () => {
+      clearTimeout(timeoutId);  // Stop auto cancel
+      notification.classList.remove('show');
+      setTimeout(() => alertContainer.removeChild(notification), 500);
+      if (callback) callback(false); // Trigger the callback with 'false' for cancellation
+    });
+  }
+  
 }
