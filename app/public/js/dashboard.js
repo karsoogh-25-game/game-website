@@ -72,6 +72,12 @@ document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('btn-join').onclick   = renderJoinForm;
   }
 
+  // نمایش اسپینر قبل از شروع عملیات
+  function setLoadingState(isLoading) {
+    const spinnerElement = document.getElementById('loading-spinner');
+    spinnerElement.style.display = isLoading ? 'block' : 'none';
+  }
+
   function renderCreateForm(){
     groupArea.innerHTML = `
       <div class="bg-gray-700 rounded-lg p-6 max-w-md mx-auto">
@@ -84,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <p id="group-error" class="error mt-2"></p>
       </div>`;
     document.getElementById('btn-do-create').onclick = async () => {
+      setLoadingState(true);  // فعال کردن اسپینر
       try {
         const name = document.getElementById('inp-name').value;
         await axios.post('/api/groups/create', { name });
@@ -92,6 +99,8 @@ document.addEventListener('DOMContentLoaded', function(){
       } catch(e) {
         document.getElementById('group-error').innerText = e.response.data.message;
         sendNotification('error', 'خطا در ایجاد گروه');
+      }finally{
+        setLoadingState(false);  // غیرفعال کردن اسپینر بعد از اتمام
       }
     };
     document.getElementById('btn-cancel-create').onclick = loadMyGroup;
@@ -109,6 +118,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <p id="group-error" class="error mt-2"></p>
       </div>`;
     document.getElementById('btn-do-join').onclick = async () => {
+      setLoadingState(true);  // فعال کردن اسپینر
       try {
         const code = document.getElementById('inp-code').value;
         await axios.post('/api/groups/add-member', { code });
@@ -117,6 +127,8 @@ document.addEventListener('DOMContentLoaded', function(){
       } catch(e) {
         document.getElementById('group-error').innerText = e.response.data.message;
         sendNotification('error', 'خطا در پیوستن به گروه');
+      }finally {
+        setLoadingState(false);  // غیرفعال کردن اسپینر بعد از اتمام
       }
     };
     document.getElementById('btn-cancel-join').onclick = loadMyGroup;
@@ -156,15 +168,23 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>`;
   
     document.getElementById('btn-leave').onclick = async () => {
-      if(!confirm('مطمئنی؟')) return;
-      try { await axios.post('/api/groups/leave',{ groupId:g.id }); loadMyGroup(); }
-      catch(e){ document.getElementById('group-error').innerText = e.response.data.message; }
-      sendNotification('info', 'از گروه خارج شدید');
+      sendConfirmationNotification('confirm', 'آیا مطمئن هستید که می‌خواهید از گروه خارج شوید؟', async (confirmed) => {
+        if (confirmed) {
+          try {
+            await axios.post('/api/groups/leave',{ groupId:g.id });
+            loadMyGroup();
+            sendNotification('info', 'از گروه خارج شدید');
+          } catch (e) {
+            document.getElementById('group-error').innerText = e.response.data.message;
+          }
+        } else {
+          sendNotification('info', 'خروج از گروه لغو شد');
+        }
+      });
     };
   
     if(role==='leader'){
       document.getElementById('btn-delete').onclick = () => {
-        // Show confirmation notification for delete group
         sendConfirmationNotification('confirm', 'آیا مطمئن هستید که می‌خواهید این گروه را حذف کنید؟', async (confirmed) => {
           if (confirmed) {
             try {
@@ -292,60 +312,58 @@ function sendNotification(type, text) {
     notification.classList.remove('show');
     setTimeout(() => alertContainer.removeChild(notification), 500);
   }, 5000);
+}
 
-
-  function sendConfirmationNotification(type, text, callback) {
-    let alertContainer = document.getElementById('alert-container');
-    
-    // Define different confirmation alert styles
-    const alerts = {
-      confirm: {
-        icon: `<svg class="w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+function sendConfirmationNotification(type, text, callback) {
+  let alertContainer = document.getElementById('alert-container');
+  
+  // Define different confirmation alert styles
+  const alerts = {
+    confirm: {
+      icon: `<svg class="w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>`,
-        color: "bg-orange-500"
-      }
-    };
+      color: "bg-orange-500"
+    }
+  };
+
+  let notification = document.createElement("div");
+  notification.classList.add('alert-box', alerts.confirm.color, 'text-white', 'flex', 'items-center', 'rounded-md', 'opacity-0', 'relative');
+  notification.innerHTML = `${alerts.confirm.icon}<p>${text}</p>`;
   
-    let notification = document.createElement("div");
-    notification.classList.add('alert-box', alerts.confirm.color, 'text-white', 'flex', 'items-center', 'rounded-md', 'opacity-0', 'relative');
-    notification.innerHTML = `${alerts.confirm.icon}<p>${text}</p>`;
-    
-    // Add 'confirm' and 'cancel' buttons
-    notification.innerHTML += `
-      <button class="btn-primary px-3 py-1 text-sm mx-2" id="btn-confirm">تایید</button>
-      <button class="btn-secondary px-3 py-1 text-sm mx-2" id="btn-cancel">انصراف</button>
-    `;
-    alertContainer.appendChild(notification);
+  // Add 'confirm' and 'cancel' buttons
+  notification.innerHTML += `
+    <button class="btn-primary px-3 py-1 text-sm mx-2" id="btn-confirm">تایید</button>
+    <button class="btn-secondary px-3 py-1 text-sm mx-2" id="btn-cancel">انصراف</button>
+  `;
+  alertContainer.appendChild(notification);
   
-    // Show the notification with animation
-    setTimeout(() => {
-      notification.classList.add('show');
-    }, 10);
+  // Show the notification with animation
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 10);
   
-    // Remove the notification after 10 seconds if no action
-    const timeoutId = setTimeout(() => {
-      notification.classList.remove('show');
-      setTimeout(() => alertContainer.removeChild(notification), 500);
-      // Trigger cancel if no action is taken
-      if (callback) callback(false);
-    }, 10000);
+  // Remove the notification after 10 seconds if no action
+  const timeoutId = setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => alertContainer.removeChild(notification), 500);
+    // Trigger cancel if no action is taken
+    if (callback) callback(false);
+  }, 10000);
   
-    // Handle the 'confirm' action
-    document.getElementById('btn-confirm').addEventListener('click', () => {
-      clearTimeout(timeoutId);  // Stop auto cancel
-      notification.classList.remove('show');
-      setTimeout(() => alertContainer.removeChild(notification), 500);
-      if (callback) callback(true); // Trigger the callback with 'true' for confirmation
-    });
+  // Handle the 'confirm' action
+  document.getElementById('btn-confirm').addEventListener('click', () => {
+    clearTimeout(timeoutId);  // Stop auto cancel
+    notification.classList.remove('show');
+    setTimeout(() => alertContainer.removeChild(notification), 500);
+    if (callback) callback(true); // Trigger the callback with 'true' for confirmation
+  });
   
-    // Handle the 'cancel' action
-    document.getElementById('btn-cancel').addEventListener('click', () => {
-      clearTimeout(timeoutId);  // Stop auto cancel
-      notification.classList.remove('show');
-      setTimeout(() => alertContainer.removeChild(notification), 500);
-      if (callback) callback(false); // Trigger the callback with 'false' for cancellation
-    });
-  }
-  
+  // Handle the 'cancel' action
+  document.getElementById('btn-cancel').addEventListener('click', () => {
+    clearTimeout(timeoutId);  // Stop auto cancel
+    notification.classList.remove('show');
+    setTimeout(() => alertContainer.removeChild(notification), 500);
+    if (callback) callback(false); // Trigger the callback with 'false' for cancellation
+  });
 }
