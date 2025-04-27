@@ -1,3 +1,5 @@
+// app/controllers/groupController.js
+
 const { Group, GroupMember, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
@@ -14,16 +16,37 @@ exports.createGroup = async (req, res) => {
     res.json({ success:true, group });
   } catch(err) {
     await t.rollback();
+    console.error('createGroup error:', err);
     res.status(500).json({ success:false, message:'خطا در ایجاد گروه' });
   }
 };
 
 exports.addMember = async (req, res) => {
-  const { groupId, userIdToAdd } = req.body;
-  const count = await GroupMember.count({ where:{ groupId } });
-  if (count >= 3) return res.status(400).json({ success:false, message:'گروه پر شده' });
-  await GroupMember.create({ groupId, userId:userIdToAdd, role:'member' });
-  res.json({ success:true });
+  const userId = req.session.userId;
+  const { code } = req.body;
+  try {
+    // کاربر نباید قبلاً عضو گروه دیگری باشد
+    const already = await GroupMember.findOne({ where:{ userId } });
+    if (already) {
+      return res.status(400).json({ success:false, message:'شما در گروه دیگری هستید.' });
+    }
+    // پیدا کردن گروه با کد ۸ رقمی
+    const group = await Group.findOne({ where:{ code } });
+    if (!group) {
+      return res.status(404).json({ success:false, message:'کد گروه نادرست است.' });
+    }
+    // بررسی تعداد اعضا (حداکثر 3)
+    const count = await GroupMember.count({ where:{ groupId: group.id } });
+    if (count >= 3) {
+      return res.status(400).json({ success:false, message:'گروه پر است.' });
+    }
+    // اضافه کردن عضو
+    await GroupMember.create({ groupId: group.id, userId, role:'member' });
+    res.json({ success:true });
+  } catch(err) {
+    console.error('addMember error:', err);
+    res.status(500).json({ success:false, message:'خطای سرور در پیوستن به گروه' });
+  }
 };
 
 exports.leaveGroup = async (req, res) => {
@@ -35,7 +58,7 @@ exports.leaveGroup = async (req, res) => {
     const wasLeader = (await Group.findByPk(groupId)).leaderId === userId;
     if (wasLeader) {
       const others = await GroupMember.findAll({ where:{ groupId }, transaction:t });
-      if (others.length>0) {
+      if (others.length > 0) {
         const nxt = others[Math.floor(Math.random()*others.length)];
         await Group.update({ leaderId:nxt.userId }, { where:{ id:groupId }, transaction:t });
         await GroupMember.update({ role:'leader' }, { where:{ groupId, userId:nxt.userId }, transaction:t });
@@ -47,96 +70,101 @@ exports.leaveGroup = async (req, res) => {
     res.json({ success:true });
   } catch(err) {
     await t.rollback();
+    console.error('leaveGroup error:', err);
     res.status(500).json({ success:false, message:'خطا در خروج از گروه' });
   }
 };
 
-// اصلاح‌شده: getMyGroup
 exports.getMyGroup = async (req, res) => {
   const userId = req.session.userId;
   try {
-    // ابتدا ببین عضو هست یا نه
-    const membership = await GroupMember.findOne({ where: { userId } });
-    if (!membership) {
-      return res.json({ member: false });
-    }
+    // بررسی عضویت
+    const membership = await GroupMember.findOne({ where:{ userId } });
+    if (!membership) return res.json({ member:false });
 
-    // بعد اطلاعات گروه را جداگانه واکشی کن
+    // واکشی اطلاعات گروه
     const group = await Group.findByPk(membership.groupId, {
       include: [
-        { model: User, as: 'leader', attributes: ['id','firstName','lastName'] }
+        { model: User, as:'leader', attributes:['id','firstName','lastName'] }
       ]
     });
+    if (!group) return res.status(404).json({ member:false, message:'گروه یافت نشد' });
 
-    if (!group) {
-      return res.status(404).json({ member: false, message: 'گروه یافت نشد' });
-    }
-
-    // اعضا را با متد getUsers بخوان
+    // واکشی اعضا
     const members = await group.getUsers({
-      joinTableAttributes: [],           // بدون ستون‌های میانی
-      attributes: ['id','firstName','lastName']
+      joinTableAttributes: [],
+      attributes:['id','firstName','lastName']
     });
 
     // محاسبه رتبه
     const all = await Group.findAll({ order:[['score','DESC']] });
-    const rank = all.findIndex(g=>g.id===group.id)+1;
+    const rank = all.findIndex(g=>g.id===group.id) + 1;
 
-    return res.json({
+    res.json({
       member: true,
       role: membership.role,
       group: {
         id: group.id,
         name: group.name,
         code: group.code,
-        walletCode: group.walletCode,
         score: group.score,
         rank,
-        members: members.map(u=>({ id:u.id, name:u.firstName+' '+u.lastName }))
+        members: members.map(u=>({ id:u.id, name:`${u.firstName} ${u.lastName}` }))
       }
     });
-  } catch (err) {
+  } catch(err) {
     console.error('getMyGroup error:', err);
-    return res.status(500).json({ member: false, message: 'خطای سرور در بارگذاری گروه' });
+    res.status(500).json({ member:false, message:'خطای سرور در بارگذاری گروه' });
   }
 };
 
-// اصلاح‌شده: getRanking (با لاگ امن)
 exports.getRanking = async (req, res) => {
   try {
     const groups = await Group.findAll({
       order:[['score','DESC']],
       include:[{ model: User, as:'leader', attributes:['firstName','lastName'] }]
     });
-    return res.json(groups.map((g,i)=>({
+    res.json(groups.map((g,i)=>({
       id: g.id,
       name: g.name,
       score: g.score,
       rank: i+1,
-      leader: g.leader.firstName+' '+g.leader.lastName
+      leader: `${g.leader.firstName} ${g.leader.lastName}`
     })));
   } catch(err) {
     console.error('getRanking error:', err);
-    return res.status(500).json({ message: 'خطای سرور در بارگذاری رتبه‌بندی' });
+    res.status(500).json({ message:'خطای سرور در بارگذاری رتبه‌بندی' });
   }
 };
 
-// new: leader removes a member
 exports.removeMember = async (req, res) => {
   const leaderId = req.session.userId;
   const { memberId } = req.body;
-  const group = await Group.findByPk(req.params.id);
-  if (group.leaderId !== leaderId) return res.status(403).json({ success:false, message:'فقط سرگروه مجاز است.' });
-  await GroupMember.destroy({ where:{ groupId:group.id, userId:memberId }});
-  res.json({ success:true });
+  try {
+    const group = await Group.findByPk(req.params.id);
+    if (group.leaderId !== leaderId) {
+      return res.status(403).json({ success:false, message:'فقط سرگروه مجاز است.' });
+    }
+    await GroupMember.destroy({ where:{ groupId:group.id, userId:memberId }});
+    res.json({ success:true });
+  } catch(err) {
+    console.error('removeMember error:', err);
+    res.status(500).json({ success:false, message:'خطای سرور' });
+  }
 };
 
-// new: leader deletes entire group
 exports.deleteGroup = async (req, res) => {
   const leaderId = req.session.userId;
-  const group = await Group.findByPk(req.params.id);
-  if (group.leaderId !== leaderId) return res.status(403).json({ success:false, message:'فقط سرگروه.' });
-  await GroupMember.destroy({ where:{ groupId:group.id }});
-  await group.destroy();
-  res.json({ success:true });
+  try {
+    const group = await Group.findByPk(req.params.id);
+    if (group.leaderId !== leaderId) {
+      return res.status(403).json({ success:false, message:'فقط سرگروه مجاز است.' });
+    }
+    await GroupMember.destroy({ where:{ groupId:group.id }});
+    await group.destroy();
+    res.json({ success:true });
+  } catch(err) {
+    console.error('deleteGroup error:', err);
+    res.status(500).json({ success:false, message:'خطای سرور' });
+  }
 };

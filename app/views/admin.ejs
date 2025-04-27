@@ -21,7 +21,7 @@
       <ul>
         <li v-for="sec in sections" :key="sec.key"
             @click="activeSection = sec.key"
-            class="py-2 px-3 cursor-pointer hover:bg-gray-700 rounded"
+            class="py-2 px-3 cursor-pointer hover:bg-gray-700 rounded my-2"
             :class="{'bg-gray-700 font-bold': activeSection === sec.key}">
           {{ sec.label }}
         </li>
