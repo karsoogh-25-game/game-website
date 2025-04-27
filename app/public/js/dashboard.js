@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function(){
   async function loadMyGroup(){
     cardScore.textContent = '—';
     cardGroup.textContent = '—';
+    setLoadingState(true);  // فعال کردن اسپینر
     try {
       const r = await axios.get('/api/groups/my');
       if (!r.data.member) {
@@ -57,6 +58,8 @@ document.addEventListener('DOMContentLoaded', function(){
       console.error(err);
       groupArea.innerHTML = `<p class="error text-center">خطا در بارگذاری وضعیت گروه: ${err.response?.data?.message||err.message}</p>`;
       sendNotification('error', 'خطا در بارگذاری وضعیت گروه');
+    } finally {
+      setLoadingState(false);  // غیرفعال کردن اسپینر
     }
   }
 
@@ -75,7 +78,9 @@ document.addEventListener('DOMContentLoaded', function(){
   // نمایش اسپینر قبل از شروع عملیات
   function setLoadingState(isLoading) {
     const spinnerElement = document.getElementById('loading-spinner');
-    spinnerElement.style.display = isLoading ? 'block' : 'none';
+    if (spinnerElement) {  // اطمینان از وجود عنصر
+      spinnerElement.style.display = isLoading ? 'flex' : 'none';  // نمایش یا مخفی کردن اسپینر
+    }
   }
 
   function renderCreateForm(){
@@ -99,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function(){
       } catch(e) {
         document.getElementById('group-error').innerText = e.response.data.message;
         sendNotification('error', 'خطا در ایجاد گروه');
-      }finally{
+      } finally {
         setLoadingState(false);  // غیرفعال کردن اسپینر بعد از اتمام
       }
     };
@@ -127,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function(){
       } catch(e) {
         document.getElementById('group-error').innerText = e.response.data.message;
         sendNotification('error', 'خطا در پیوستن به گروه');
-      }finally {
+      } finally {
         setLoadingState(false);  // غیرفعال کردن اسپینر بعد از اتمام
       }
     };
