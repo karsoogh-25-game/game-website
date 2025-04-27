@@ -30,11 +30,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Auth routes & page
-app.get('/', (req,res)=>res.render('auth'));
+app.get('/', (req, res) => res.render('auth'));
 app.use('/', require('./routes/auth'));
 
 // Admin guard
-function isAdmin(req,res,next){
+function isAdmin(req, res, next) {
   if (req.session.adminId) return next();
   res.redirect('/');
 }
@@ -42,22 +42,27 @@ function isAdmin(req,res,next){
 app.use('/admin', isAdmin, require('./routes/admin')(io));
 
 // User guard
-function isUser(req,res,next){
+function isUser(req, res, next) {
   if (req.session.userId) return next();
   res.redirect('/');
 }
 // User (dashboard) routes
 app.use('/dashboard', isUser, require('./routes/user'));
 
+// Group-routes برای بخش گروهبندی پنل کاربری
+const groupRoutes = require('./routes/group');
+app.use('/api/groups', isUser, groupRoutes);
+
 // socket
-io.on('connection', s=> console.log('Socket:', s.id));
+io.on('connection', s => console.log('Socket:', s.id));
 
 // seed admin & start
-async function seedAdmin(){
-  const exists = await Admin.findOne({ where:{ phoneNumber:'09912807001' } });
-  if (!exists) await Admin.create({ phoneNumber:'09912807001', password:'F@rdad6831' });
+async function seedAdmin() {
+  const exists = await Admin.findOne({ where: { phoneNumber: '09912807001' } });
+  if (!exists) await Admin.create({ phoneNumber: '09912807001', password: 'F@rdad6831' });
 }
-sequelize.sync().then(async()=>{
+
+sequelize.sync().then(async () => {
   await seedAdmin();
-  server.listen(process.env.PORT||3000, ()=>console.log('Listening'));
+  server.listen(process.env.PORT || 3000, () => console.log('Listening'));
 });

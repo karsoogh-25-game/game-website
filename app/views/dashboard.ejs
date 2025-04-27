@@ -5,22 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>پنل کاربری</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css"><!-- unified auth styles -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* افزودن ترنزیشن برای بخش‌ها */
-    .content-section {
-      opacity: 0;
-      transition: opacity .3s ease;
-    }
-    .content-section.active {
-      opacity: 1;
-    }
+    /* transition for sections */
+    .content-section { opacity: 0; transition: opacity .3s ease; display: none; }
+    .content-section.active { display: block; opacity: 1; }
   </style>
 </head>
 <body class="bg-pattern font-wazir flex h-screen overflow-hidden">
 
-  <!-- Desktop Sidebar -->
+  <!-- Sidebar -->
   <aside class="hidden md:flex flex-col w-64 bg-gray-900 border-l border-gray-800">
     <div class="h-16 flex items-center justify-center bg-gray-800">
       <i class="fas fa-chalkboard-teacher text-blue-400 text-2xl ml-2"></i>
@@ -53,9 +48,7 @@
   </aside>
 
   <!-- Mobile Sidebar -->
-  <aside id="mobile-menu"
-         class="fixed inset-y-0 right-0 w-64 bg-gray-900 border-l border-gray-800 transform translate-x-full transition-transform duration-300 ease-in-out md:hidden"
-         style="z-index: 10;">
+  <aside id="mobile-menu" class="fixed inset-y-0 right-0 w-64 bg-gray-900 border-l border-gray-800 transform translate-x-full transition-transform duration-300 ease-in-out md:hidden" style="z-index:10">
     <div class="h-16 flex items-center justify-between bg-gray-800 px-4">
       <div class="flex items-center">
         <i class="fas fa-chalkboard-teacher text-blue-400 text-xl ml-2"></i>
@@ -82,26 +75,19 @@
   <!-- Main content -->
   <div class="flex-1 flex flex-col overflow-hidden">
     <!-- Header -->
-    <header class="flex items-center justify-between h-16 bg-gray-800 border-b border-gray-700 px-1">
+    <header class="flex items-center justify-between h-16 bg-gray-800 border-b border-gray-700 px-4">
       <div class="flex items-center">
-        <button id="open-mobile-menu" class="text-gray-400 hover:text-white md:hidden mr-4">
-          <i class="fas fa-bars text-xl"></i>
-        </button>
+        <button id="open-mobile-menu" class="text-gray-400 hover:text-white md:hidden mr-4"><i class="fas fa-bars text-xl"></i></button>
         <h1 id="page-title" class="text-white text-xl font-bold">داشبورد</h1>
       </div>
       <div class="flex items-center">
-        <button class="relative text-gray-400 hover:text-white">
-          <i class="fas fa-bell text-xl"></i>
-          <span class="absolute top-2 left-5 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-        <button href="/logout" class="text-gray-400 hover:text-white">
-          <i class="fas fa-sign-out-alt text-xl"></i>
-        </button>
+        <button class="relative text-gray-400 hover:text-white mr-4"><i class="fas fa-bell text-xl"></i><span class="absolute top-2 left-5 w-2 h-2 bg-red-500 rounded-full"></span></button>
+        <button onclick="location.href='/logout'" class="text-gray-400 hover:text-white"><i class="fas fa-sign-out-alt text-xl"></i></button>
       </div>
     </header>
 
     <!-- Sections -->
-    <main class="flex-1 overflow-auto p-4 md:p-8 border-none" style="border: none !important;">
+    <main class="flex-1 overflow-auto p-4 md:p-8">
       <!-- Dashboard -->
       <section id="dashboard" class="content-section active">
         <div class="mb-8 text-center">
@@ -109,22 +95,29 @@
           <p class="text-gray-300 text-lg">💡 آیا می‌دانستی؟ <strong><%= fact %></strong></p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="card bg-gray-700 rounded-lg p-6">
-            <p class="text-gray-400 text-sm">امتیاز</p>
-            <p class="text-white text-2xl font-bold">—</p>
+          <div class="bg-gray-700 rounded-lg p-6 text-center">
+            <p class="text-gray-400 text-sm">امتیاز شما</p>
+            <p id="card-score" class="text-white text-2xl font-bold">—</p>
           </div>
-          <div class="card bg-gray-700 rounded-lg p-6">
-            <p class="text-gray-400 text-sm">گروه</p>
-            <p class="text-white text-2xl font-bold">—</p>
+          <div class="bg-gray-700 rounded-lg p-6 text-center">
+            <p class="text-gray-400 text-sm">گروه شما</p>
+            <p id="card-group" class="text-white text-2xl font-bold">—</p>
           </div>
-          <div class="card bg-gray-700 rounded-lg p-6">
+          <div class="bg-gray-700 rounded-lg p-6 text-center">
             <p class="text-gray-400 text-sm">اعلان‌ها</p>
             <p class="text-white text-2xl font-bold">—</p>
           </div>
         </div>
       </section>
 
-      <% ['training','groups','bank','store','scoreboard','announcements'].forEach(id=>{ %>
+      <!-- Groups Section -->
+      <section id="groups" class="content-section hidden">
+        <h2 class="text-xl font-bold text-white mb-6 text-center">گروه‌بندی</h2>
+        <div id="group-area" class="max-w-2xl mx-auto space-y-6"></div>
+      </section>
+
+      <!-- Other Sections -->
+      <% ['training','bank','store','scoreboard','announcements'].forEach(id=>{ %>
         <section id="<%= id %>" class="content-section hidden">
           <h2 class="text-xl font-bold text-white mb-4"><%= sections.find(s=>s.id===id).label %></h2>
           <p class="text-gray-500">فعلاً خالی …</p>
@@ -133,51 +126,150 @@
     </main>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function(){
+      // sidebar
       const mobileMenu = document.getElementById('mobile-menu');
-      document.getElementById('open-mobile-menu')
-        .addEventListener('click', () => {
-          mobileMenu.classList.remove('translate-x-full');
-          mobileMenu.classList.add('translate-x-0');
-        });
-      document.getElementById('close-mobile-menu')
-        .addEventListener('click', () => {
-          mobileMenu.classList.remove('translate-x-0');
-          mobileMenu.classList.add('translate-x-full');
-        });
+      document.getElementById('open-mobile-menu').onclick = ()=> mobileMenu.classList.replace('translate-x-full','translate-x-0');
+      document.getElementById('close-mobile-menu').onclick = ()=> mobileMenu.classList.replace('translate-x-0','translate-x-full');
 
+      // tabs
       const menuItems = Array.from(document.querySelectorAll('.menu-item'));
       const sections  = Array.from(document.querySelectorAll('.content-section'));
       const pageTitle = document.getElementById('page-title');
-
       function showSection(id){
-        sections.forEach(sec => {
-          if (sec.id === id) {
-            sec.classList.remove('hidden');
-            sec.classList.add('active');
-          } else {
-            sec.classList.remove('active');
-            sec.classList.add('hidden');
-          }
-        });
+        sections.forEach(sec=> sec.id===id ? sec.classList.replace('hidden','active') : sec.classList.replace('active','hidden'));
       }
-
       menuItems.forEach(item=>{
         item.addEventListener('click', e=>{
           e.preventDefault();
-          menuItems.forEach(i=> i.classList.remove('active'));
+          menuItems.forEach(i=>i.classList.remove('active'));
           item.classList.add('active');
           showSection(item.dataset.section);
           pageTitle.textContent = item.innerText;
-          if (window.innerWidth < 768) {
-            mobileMenu.classList.add('translate-x-full');
-            mobileMenu.classList.remove('translate-x-0');
-          }
         });
       });
+
+      // dashboard cards
+      const cardScore = document.getElementById('card-score');
+      const cardGroup = document.getElementById('card-group');
+
+      // group logic
+      const groupArea = document.getElementById('group-area');
+
+      async function loadMyGroup(){
+        // reset cards
+        cardScore.textContent = '—';
+        cardGroup.textContent = '—';
+        try {
+          const r = await axios.get('/api/groups/my');
+          if(!r.data.member) renderNotMember();
+          else {
+            const g = r.data.group;
+            cardScore.textContent = g.score;
+            cardGroup.textContent = g.name;
+            renderGroupDashboard(g, r.data.role);
+          }
+        } catch(err) {
+          console.error(err);
+          groupArea.innerHTML = `<p class="error text-center">خطا در بارگذاری وضعیت گروه: ${err.response?.data?.message||err.message}</p>`;
+        }
+      }
+
+      function renderNotMember(){
+        groupArea.innerHTML = `
+          <div class="bg-gray-700 rounded-lg p-6 text-center">
+            <p class="text-gray-300 mb-4">شما عضو هیچ گروهی نیستید.</p>
+            <button id="btn-create" class="btn-primary px-3 py-1 text-sm mx-2">ایجاد گروه</button>
+            <button id="btn-join" class="btn-secondary px-3 py-1 text-sm mx-2">پیوستن</button>
+            <p id="group-error" class="error mt-2"></p>
+          </div>`;
+        document.getElementById('btn-create').onclick = renderCreateForm;
+        document.getElementById('btn-join').onclick   = renderJoinForm;
+      }
+
+      function renderCreateForm(){
+        groupArea.innerHTML = `
+          <div class="bg-gray-700 rounded-lg p-6 max-w-md mx-auto">
+            <h3 class="text-white font-bold mb-4">ایجاد گروه</h3>
+            <input id="inp-name" class="input-field w-full mb-4" placeholder="نام گروه…" />
+            <div class="flex justify-end">
+              <button id="btn-cancel-create" class="btn-secondary px-3 py-1 text-sm mx-2">انصراف</button>
+              <button id="btn-do-create" class="btn-primary px-3 py-1 text-sm mx-2">بساز</button>
+            </div>
+            <p id="group-error" class="error mt-2"></p>
+          </div>`;
+        document.getElementById('btn-do-create').onclick = async ()=>{
+          const name = document.getElementById('inp-name').value;
+          try { await axios.post('/api/groups/create',{ name }); loadMyGroup(); }
+          catch(e){ document.getElementById('group-error').innerText=e.response.data.message; }
+        };
+        document.getElementById('btn-cancel-create').onclick = loadMyGroup;
+      }
+
+      function renderJoinForm(){
+        groupArea.innerHTML = `
+          <div class="bg-gray-700 rounded-lg p-6 max-w-md mx-auto">
+            <h3 class="text-white font-bold mb-4">پیوستن به گروه</h3>
+            <input id="inp-code" class="input-field w-full mb-4" placeholder="کد ۸ حرفی…" maxlength="8" />
+            <div class="flex justify-end">
+              <button id="btn-cancel-join" class="btn-secondary px-3 py-1 text-sm mx-2">انصراف</button>
+              <button id="btn-do-join" class="btn-primary px-3 py-1 text-sm mx-2">پیوستن</button>
+            </div>
+            <p id="group-error" class="error mt-2"></p>
+          </div>`;
+        document.getElementById('btn-do-join').onclick = async ()=>{
+          const code = document.getElementById('inp-code').value;
+          try { await axios.post('/api/groups/add-member',{ code }); loadMyGroup(); }
+          catch(e){ document.getElementById('group-error').innerText=e.response.data.message; }
+        };
+        document.getElementById('btn-cancel-join').onclick = loadMyGroup;
+      }
+
+      function renderGroupDashboard(g, role){
+        groupArea.innerHTML = `
+          <div class="bg-gray-700 rounded-lg p-6 max-w-2xl mx-auto space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-600 p-4 rounded text-center">
+              <div><p class="text-gray-400 text-sm">نام گروه</p><p class="text-white">${g.name}</p></div>
+              <div><p class="text-gray-400 text-sm">امتیاز</p><p class="text-white">${g.score}</p></div>
+              <div><p class="text-gray-400 text-sm">رتبه</p><p class="text-white">${g.rank}</p></div>
+            </div>
+            <h4 class="text-white font-bold">اعضا</h4>
+            <table class="min-w-full bg-gray-600 rounded overflow-hidden text-sm">
+              <thead><tr class="bg-gray-700 text-gray-300"><th class="px-3 py-1">نام</th><th class="px-3 py-1">نقش</th></tr></thead>
+              <tbody>${g.members.map(m=>`<tr class="border-b border-gray-500"><td class="px-3 py-1 text-white">${m.name}</td><td class="px-3 py-1 text-gray-400">${m.role==='leader'?'سرگروه':'عضو'}</td></tr>`).join('')}</tbody>
+            </table>
+            <div class="flex justify-center space-x-4">
+              <button id="btn-leave" class="btn-secondary px-3 py-1 text-sm mx-2">خروج</button>
+              ${role==='leader'?`<button id="btn-delete" class="btn-primary px-3 py-1 text-sm mx-2">حذف</button>`:``}
+            </div>
+            <p id="group-error" class="error text-center"></p>
+          </div>`;
+        document.getElementById('btn-leave').onclick = async ()=>{
+          if(!confirm('مطمئنی؟')) return;
+          try{ await axios.post('/api/groups/leave',{ groupId:g.id }); loadMyGroup(); }
+          catch(e){ document.getElementById('group-error').innerText=e.response.data.message; }
+        };
+        if(role==='leader'){
+          document.getElementById('btn-delete').onclick = async ()=>{
+            if(!confirm('حذف؟')) return;
+            try{ await axios.delete(`/api/groups/${g.id}`); loadMyGroup(); }
+            catch(e){ document.getElementById('group-error').innerText=e.response.data.message; }
+          };
+        }
+      }
+
+      // real-time
+      const socket = io();
+      socket.on('memberJoined', loadMyGroup);
+      socket.on('memberRemoved', loadMyGroup);
+      socket.on('groupDeleted', renderNotMember);
+
+      // trigger on tab
+      menuItems.forEach(i=> i.addEventListener('click',()=>{ if(i.dataset.section==='groups') loadMyGroup(); }));
     });
   </script>
-
 </body>
 </html>

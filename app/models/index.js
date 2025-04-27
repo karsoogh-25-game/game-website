@@ -1,5 +1,7 @@
-const { Sequelize } = require('sequelize');
-const path         = require('path');
+// app/models/index.js
+
+const { Sequelize, DataTypes } = require('sequelize');
+const path = require('path');
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
@@ -9,7 +11,17 @@ const sequelize = new Sequelize({
 
 const db = { sequelize };
 
-db.User  = require('./user')(sequelize);
-db.Admin = require('./admin')(sequelize);
+// load each model, passing both sequelize instance and DataTypes
+db.User        = require('./user')(sequelize, DataTypes);
+db.Admin       = require('./admin')(sequelize, DataTypes);
+db.Group       = require('./group')(sequelize, DataTypes);
+db.GroupMember = require('./GroupMember')(sequelize, DataTypes);
+
+// set up associations
+Object.values(db).forEach(model => {
+  if (typeof model.associate === 'function') {
+    model.associate(db);
+  }
+});
 
 module.exports = db;
