@@ -83,6 +83,6 @@ async function seedAdmin() {
 
 sequelize.sync().then(async () => {
   await seedAdmin();
-  const port = process.env.PORT || 8000;
+  const port = process.env.PORT || 3000;
   server.listen(port, () => console.log(`Listening on port ${port}`));
 });

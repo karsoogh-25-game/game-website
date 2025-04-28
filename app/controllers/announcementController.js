@@ -1,94 +1,161 @@
 // app/controllers/announcementController.js
-const { Announcement } = require('../models');
+
+const { Announcement, AnnouncementAttachment } = require('../models');
 const path = require('path');
 const fs   = require('fs');
 
+/**
+ * GET /api/announcements
+ * → لیست همه اطلاعیه‌ها به همراه ضمائم
+ */
 exports.listAnnouncements = async (req, res) => {
   try {
     const all = await Announcement.findAll({
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      include: {
+        model: AnnouncementAttachment,
+        as: 'attachments',
+        attributes: ['id', 'originalName', 'path']
+      }
     });
-    res.json(all);
+    return res.json(all);
   } catch (err) {
     console.error('Error fetching announcements:', err);
-    res.status(500).json({ message: 'خطا در بارگذاری اطلاعیه‌ها' });
+    return res.status(500).json({ message: 'خطا در بارگذاری اطلاعیه‌ها' });
   }
 };
 
+/**
+ * POST /admin/api/announcements
+ * → ایجاد اطلاعیه جدید با چند فایل ضمیمه
+ */
 exports.createAnnouncement = async (req, res) => {
   try {
     const { title, shortDescription, longDescription } = req.body;
-    let attachment = null;
-    if (req.file) {
-      // ذخیره آدرس فایل برای لینک دانلود
-      attachment = `/uploads/${req.file.filename}`;
-    }
+    // ۱) ایجاد رکورد اطلاعیه
     const ann = await Announcement.create({
       title,
       shortDescription: shortDescription || null,
-      longDescription:  longDescription  || null,
-      attachment
+      longDescription:  longDescription  || null
     });
-    // انتشار رویداد بلادرنگ
-    req.io.emit('announcementCreated', ann);
-    res.status(201).json(ann);
+
+    // ۲) اگر فایل‌های ضمیمه وجود داشتند، ایجاد رکوردهای Attachment
+    if (req.files && req.files.length) {
+      await Promise.all(req.files.map(file =>
+        AnnouncementAttachment.create({
+          announcementId: ann.id,
+          originalName:  file.originalname,
+          filename:      file.filename,
+          path:          `/uploads/${file.filename}`
+        })
+      ));
+    }
+
+    // ۳) واکشی مجدد اطلاعیه با ضمائمش
+    const result = await Announcement.findByPk(ann.id, {
+      include: {
+        model: AnnouncementAttachment,
+        as: 'attachments',
+        attributes: ['id', 'originalName', 'path']
+      }
+    });
+
+    req.io.emit('announcementCreated', result);
+    return res.status(201).json(result);
   } catch (e) {
     console.error('Error creating announcement:', e);
-    res.status(400).json({ message: e.message });
+    return res.status(400).json({ message: e.message });
   }
 };
 
+/**
+ * PUT /admin/api/announcements/:id
+ * → ویرایش اطلاعیه؛ حذف/اضافهٔ فایل‌های ضمیمه
+ */
 exports.updateAnnouncement = async (req, res) => {
   try {
-    const ann = await Announcement.findByPk(req.params.id);
+    const ann = await Announcement.findByPk(req.params.id, {
+      include: { model: AnnouncementAttachment, as: 'attachments' }
+    });
     if (!ann) {
       return res.status(404).json({ message: 'اطلاعیه یافت نشد' });
     }
 
-    // اگر فایل جدید آپلود شده، فایل قبلی را حذف کن
-    if (req.file) {
-      if (ann.attachment) {
-        const oldPath = path.join(__dirname, '..', 'public', ann.attachment);
-        fs.unlink(oldPath, err => {
-          if (err) console.warn('Failed to delete old attachment:', err);
-        });
-      }
-      ann.attachment = `/uploads/${req.file.filename}`;
+    // ۱) حذف فیزیکی و رکوردی ضمائم انتخاب‌شده برای حذف
+    if (Array.isArray(req.body.deletedAttachments)) {
+      await Promise.all(req.body.deletedAttachments.map(attId => {
+        const att = ann.attachments.find(a => a.id === Number(attId));
+        if (att) {
+          // حذف فایل از دیسک
+          const filePath = path.join(__dirname, '..', 'public', att.path);
+          fs.unlink(filePath, err => err && console.warn('unlink failed:', err));
+          // حذف رکورد از دیتابیس
+          return AnnouncementAttachment.destroy({ where: { id: attId } });
+        }
+      }));
     }
 
-    // بقیه فیلدها
+    // ۲) آپلود و ذخیرهٔ فایل‌های جدید
+    if (req.files && req.files.length) {
+      await Promise.all(req.files.map(file =>
+        AnnouncementAttachment.create({
+          announcementId: ann.id,
+          originalName:  file.originalname,
+          filename:      file.filename,
+          path:          `/uploads/${file.filename}`
+        })
+      ));
+    }
+
+    // ۳) به‌روزرسانی فیلدهای متنی
     ann.title            = req.body.title;
     ann.shortDescription = req.body.shortDescription || null;
     ann.longDescription  = req.body.longDescription  || null;
-
     await ann.save();
-    req.io.emit('announcementUpdated', ann);
-    res.json(ann);
+
+    // ۴) واکشی مجدد با ضمائم به‌روز
+    const result = await Announcement.findByPk(ann.id, {
+      include: {
+        model: AnnouncementAttachment,
+        as: 'attachments',
+        attributes: ['id', 'originalName', 'path']
+      }
+    });
+
+    req.io.emit('announcementUpdated', result);
+    return res.json(result);
   } catch (e) {
     console.error('Error updating announcement:', e);
-    res.status(400).json({ message: e.message });
+    return res.status(400).json({ message: e.message });
   }
 };
 
+/**
+ * DELETE /admin/api/announcements/:id
+ * → حذف اطلاعیه و تمامی ضمائمش
+ */
 exports.deleteAnnouncement = async (req, res) => {
   try {
-    const ann = await Announcement.findByPk(req.params.id);
+    const ann = await Announcement.findByPk(req.params.id, {
+      include: { model: AnnouncementAttachment, as: 'attachments' }
+    });
     if (!ann) {
       return res.status(404).json({ message: 'اطلاعیه یافت نشد' });
     }
 
-    // حذف فایل پیوست اگر وجود دارد
-    if (ann.attachment) {
-      const oldPath = path.join(__dirname, '..', 'public', ann.attachment);
-      fs.unlink(oldPath, err => {
-        if (err) console.warn('Failed to delete attachment on delete:', err);
-      });
-    }
+    // حذف فایل‌های ضمیمه از دیسک
+    await Promise.all(ann.attachments.map(att => {
+      const filePath = path.join(__dirname, '..', 'public', att.path);
+      fs.unlink(filePath, err => err && console.warn('unlink failed:', err));
+    }));
+
+    // حذف اطلاعیه (ضمائم با قانون CASCADE پاک می‌شوند)
     await ann.destroy();
+
     req.io.emit('announcementDeleted', { id: ann.id });
-    res.json({ message: 'حذف شد' });
+    return res.status(204).end();
   } catch (e) {
     console.error('Error deleting announcement:', e);
-    res.status(400).json({ message: e.message });
+    return res.status(400).json({ message: e.message });
   }
 };

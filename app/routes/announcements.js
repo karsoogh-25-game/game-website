@@ -2,41 +2,47 @@
 
 const express   = require('express');
 const path      = require('path');
+const fs        = require('fs');
 const multer    = require('multer');
-const { Announcement } = require('../models'); // خروجی مدل‌های Sequelize در index.js
+const { Announcement, AnnouncementAttachment } = require('../models');
 
-// Multer برای آپلود فایل‌های پیوست
+const storage = multer.diskStorage({
+  destination: path.join(__dirname, '..', 'public', 'uploads'),
+  filename: (req, file, cb) => {
+    // Generate a unique filename while preserving the original extension
+    const ext  = path.extname(file.originalname);
+    const name = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    cb(null, name);
+  }
+});
+
 const upload = multer({
-  dest: path.join(__dirname, '..', 'public', 'uploads'),
-  limits: { fileSize: 10 * 1024 * 1024 }
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }  // حداکثر 10 مگابایت
 });
 
 module.exports = (io) => {
   const router = express.Router();
 
-  // در دسترس بودن socket.io در req.io
+  // make socket.io available in all handlers
   router.use((req, _, next) => {
     req.io = io;
     next();
   });
 
   /**
-   * ▪ مسیر عمومی:
-   * GET /api/announcements
-   * → برگرداندن آرایه اطلاعیه‌ها با متد Sequelize.findAll
+   * ▪ GET /api/announcements
+   *   لیست عمومی اطلاعیه‌ها به همراه ضمائم
    */
   router.get('/', async (req, res) => {
     try {
       const rows = await Announcement.findAll({
-        order: [['createdAt', 'DESC']],  // جدیدترین اول
-        attributes: [
-          'id',
-          'title',
-          'shortDescription',
-          'longDescription',
-          'attachment',
-          'createdAt'
-        ]
+        order: [['createdAt', 'DESC']],
+        include: {
+          model: AnnouncementAttachment,
+          as: 'attachments',
+          attributes: ['id', 'originalName', 'path']
+        }
       });
       return res.json(rows);
     } catch (err) {
@@ -46,43 +52,48 @@ module.exports = (io) => {
   });
 
   /**
-   * ▪ مسیرهای ادمین (CRUD اطلاعیه‌ها زیر /admin/api/announcements)
+   * ▪ POST /admin/api/announcements
+   *   ایجاد اطلاعیه جدید با چند فایل ضمیمه
    */
-  router.post('/', upload.single('attachment'), async (req, res) => {
-    try {
-      const { title, shortDescription, longDescription } = req.body;
-      const attachment = req.file ? `/uploads/${req.file.filename}` : null;
-      const doc = await Announcement.create({
-        title, shortDescription, longDescription, attachment
-      });
-      req.io.emit('announcementCreated', doc);
-      return res.status(201).json(doc);
-    } catch (err) {
-      console.error('Error in POST /admin/api/announcements:', err);
-      return res.status(400).json({ message: 'خطا در ایجاد اطلاعیه' });
-    }
-  });
+  router.post(
+    '/',
+    upload.array('attachments', 5),            // حداکثر ۵ فایل
+    require('../controllers/announcementController').createAnnouncement
+  );
 
-  router.put('/:id', upload.single('attachment'), async (req, res) => {
-    try {
-      const updates = { ...req.body };
-      if (req.file) updates.attachment = `/uploads/${req.file.filename}`;
-      const [count, [doc]] = await Announcement.update(
-        updates,
-        { where: { id: req.params.id }, returning: true }
-      );
-      req.io.emit('announcementUpdated', doc);
-      return res.json(doc);
-    } catch (err) {
-      console.error('Error in PUT /admin/api/announcements/:id:', err);
-      return res.status(400).json({ message: 'خطا در به‌روزرسانی اطلاعیه' });
-    }
-  });
+  /**
+   * ▪ PUT /admin/api/announcements/:id
+   *   ویرایش اطلاعیه (حذف/اضافه ضمائم)
+   */
+  router.put(
+    '/:id',
+    upload.array('attachments', 5),
+    require('../controllers/announcementController').updateAnnouncement
+  );
 
+  /**
+   * ▪ DELETE /admin/api/announcements/:id
+   *   حذف اطلاعیه و همه ضمائم آن
+   */
   router.delete('/:id', async (req, res) => {
     try {
-      await Announcement.destroy({ where: { id: req.params.id } });
-      req.io.emit('announcementDeleted', { id: req.params.id });
+      const ann = await Announcement.findByPk(req.params.id, {
+        include: { model: AnnouncementAttachment, as: 'attachments' }
+      });
+      if (!ann) {
+        return res.status(404).json({ message: 'اطلاعیه یافت نشد' });
+      }
+
+      // پاک‌کردن فایل‌های فیزیکی
+      await Promise.all(ann.attachments.map(att => {
+        const fullPath = path.join(__dirname, '..', 'public', att.path);
+        fs.unlink(fullPath, err => err && console.warn('unlink failed:', err));
+      }));
+
+      // حذف رکورد اطلاعیه (ضمائم با CASCADE پاک می‌شوند)
+      await ann.destroy();
+
+      req.io.emit('announcementDeleted', { id: ann.id });
       return res.status(204).end();
     } catch (err) {
       console.error('Error in DELETE /admin/api/announcements/:id:', err);

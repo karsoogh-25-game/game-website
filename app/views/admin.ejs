@@ -1,4 +1,4 @@
-<!-- admin.ejs -->
+<!-- app/views/admin.ejs -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -12,38 +12,35 @@
   <style>
     .content-section { opacity:0; display:none; transition:opacity .3s ease }
     .content-section.active { display:block; opacity:1 }
-    .content-section.fade-out { opacity:0!important }
-    .content-section.fade-in  { opacity:1!important }
-
+    .fade-in  { opacity:1!important }
+    .fade-out { opacity:0!important }
     .alert-box { display:flex; align-items:center; padding:10px; border-radius:5px; margin-bottom:10px; opacity:0; transition:opacity .5s ease-out }
     .alert-box.show { opacity:1 }
   </style>
 </head>
 <body class="bg-pattern min-h-screen p-4 relative">
 
-  <!-- دکمه‌های بالا: رفرش + خروج -->
+  <!-- رفرش و خروج -->
   <div class="flex justify-end space-x-2 mb-4">
-    <button id="refresh-btn" class="text-gray-300 bg-gray-700 hover:bg-gray-600 px-4 py-2 mx-1 rounded">رفرش</button>
-    <button class="text-gray-300 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded mx-1" onclick="window.location='/logout'">خروج</button>
+    <button id="refresh-btn" class="text-gray-300 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">رفرش</button>
+    <button class="text-gray-300 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded" onclick="window.location='/logout'">خروج</button>
   </div>
 
-  <!-- Alert Container -->
+  <!-- Notifications & Loading -->
   <div id="alert-container" class="fixed top-4 right-4 z-50 w-96"></div>
-
-  <!-- Loading Spinner -->
   <div id="loading-spinner" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-40">
-    <div class="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
+    <div class="w-16 h-16 border-t-4 border-blue-500 rounded-full animate-spin"></div>
   </div>
 
-  <div id="adminApp" class="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-2xl mx-auto mt-20 flex flex-wrap">
+  <div id="adminApp" class="bg-gray-800 bg-opacity-50 backdrop-blur-lg p-6 rounded-2xl mx-auto mt-8 flex flex-wrap">
 
     <!-- منوی کناری -->
     <nav class="w-full md:w-1/5 text-white p-4 border-l border-gray-700 mb-6 md:mb-0">
       <ul>
         <li v-for="sec in sections" :key="sec.key"
             @click="selectSection(sec.key)"
-            class="py-2 px-3 cursor-pointer hover:bg-gray-700 rounded my-2 transition-colors"
-            :class="{'bg-gray-700 font-bold': activeSection === sec.key}">
+            class="py-2 px-3 cursor-pointer rounded hover:bg-gray-700 transition-colors my-2"
+            :class="{'bg-gray-700 font-bold': activeSection===sec.key}">
           {{ sec.label }}
         </li>
       </ul>
@@ -57,16 +54,25 @@
         <h2 class="text-2xl font-bold mb-4">مدیریت کاربران</h2>
         <input v-model="search" @input="fetchUsers" placeholder="جستجو…" class="input-field mb-4 w-full">
         <table class="min-w-full bg-gray-700 rounded overflow-hidden text-sm">
-          <thead><tr class="bg-gray-800 text-gray-300"><th>#</th><th>نام</th><th>نام‌خانوادگی</th><th>موبایل</th><th>کد ملی</th><th>ایمیل</th><th>نقش</th><th>فعال</th><th>ذخیره</th><th>حذف</th></tr></thead>
+          <thead>
+            <tr class="bg-gray-800 text-gray-300">
+              <th>#</th><th>نام</th><th>نام‌خانوادگی</th><th>موبایل</th><th>کد ملی</th><th>ایمیل</th><th>نقش</th><th>فعال</th><th>ذخیره</th><th>حذف</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="(u, idx) in users" :key="u.id" class="border-b border-gray-600 hover:bg-gray-600">
-              <td class="px-2 py-1 text-center">{{ idx + 1 }}</td>
+              <td class="px-2 py-1 text-center">{{ idx+1 }}</td>
               <td class="px-2"><input v-model="u.firstName" class="input-field w-full text-sm"></td>
               <td class="px-2"><input v-model="u.lastName"  class="input-field w-full text-sm"></td>
               <td class="px-2"><input v-model="u.phoneNumber" class="input-field w-full text-sm"></td>
-              <td class="px-2"><input v-model="u.nationalId"  class="input-field w-full text-sm"></td>
-              <td class="px-2"><input v-model="u.email"       class="input-field w-full text-sm"></td>
-              <td class="px-2"><select v-model="u.role" class="input-field w-full text-sm"><option value="user">کاربر</option><option value="mentor">منتور</option></select></td>
+              <td class="px-2"><input v-model="u.nationalId" class="input-field w-full text-sm"></td>
+              <td class="px-2"><input v-model="u.email" class="input-field w-full text-sm"></td>
+              <td class="px-2">
+                <select v-model="u.role" class="input-field w-full text-sm">
+                  <option value="user">کاربر</option>
+                  <option value="mentor">منتور</option>
+                </select>
+              </td>
               <td class="px-2 text-center"><input type="checkbox" v-model="u.isActive"></td>
               <td class="px-2 text-center"><button class="btn-primary px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button></td>
               <td class="px-2 text-center"><button class="btn-secondary px-2 py-1 text-sm" @click="deleteUser(u)">حذف</button></td>
@@ -80,16 +86,25 @@
         <h2 class="text-2xl font-bold mb-4">مدیریت منتورها</h2>
         <input v-model="searchMentor" @input="fetchMentors" placeholder="جستجو…" class="input-field mb-4 w-full">
         <table class="min-w-full bg-gray-700 rounded overflow-hidden text-sm">
-          <thead><tr class="bg-gray-800 text-gray-300"><th>#</th><th>نام</th><th>نام‌خانوادگی</th><th>موبایل</th><th>کد ملی</th><th>ایمیل</th><th>نقش</th><th>فعال</th><th>ذخیره</th><th>حذف</th></tr></thead>
+          <thead>
+            <tr class="bg-gray-800 text-gray-300">
+              <th>#</th><th>نام</th><th>نام‌خانوادگی</th><th>موبایل</th><th>کد ملی</th><th>ایمیل</th><th>نقش</th><th>فعال</th><th>ذخیره</th><th>حذف</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="(u, idx) in mentors" :key="u.id" class="border-b border-gray-600 hover:bg-gray-600">
-              <td class="px-2 py-1 text-center">{{ idx + 1 }}</td>
+              <td class="px-2 py-1 text-center">{{ idx+1 }}</td>
               <td class="px-2"><input v-model="u.firstName" class="input-field w-full text-sm"></td>
               <td class="px-2"><input v-model="u.lastName"  class="input-field w-full text-sm"></td>
               <td class="px-2"><input v-model="u.phoneNumber" class="input-field w-full text-sm"></td>
-              <td class="px-2"><input v-model="u.nationalId"  class="input-field w-full text-sm"></td>
-              <td class="px-2"><input v-model="u.email"       class="input-field w-full text-sm"></td>
-              <td class="px-2"><select v-model="u.role" class="input-field w-full text-sm"><option value="user">کاربر</option><option value="mentor">منتور</option></select></td>
+              <td class="px-2"><input v-model="u.nationalId" class="input-field w-full text-sm"></td>
+              <td class="px-2"><input v-model="u.email" class="input-field w-full text-sm"></td>
+              <td class="px-2">
+                <select v-model="u.role" class="input-field w-full text-sm">
+                  <option value="user">کاربر</option>
+                  <option value="mentor">منتور</option>
+                </select>
+              </td>
               <td class="px-2 text-center"><input type="checkbox" v-model="u.isActive"></td>
               <td class="px-2 text-center"><button class="btn-primary px-2 py-1 text-sm" @click="updateUser(u)">ذخیره</button></td>
               <td class="px-2 text-center"><button class="btn-secondary px-2 py-1 text-sm" @click="deleteUser(u)">حذف</button></td>
@@ -102,27 +117,75 @@
       <section id="announcements" class="content-section" :class="{'active fade-in': activeSection==='announcements'}">
         <h2 class="text-2xl font-bold mb-4">مدیریت اطلاعیه‌ها</h2>
         <button @click="openCreateForm" class="btn-primary px-4 py-2 mb-4">ایجاد اطلاعیه جدید</button>
+
         <table class="min-w-full bg-gray-700 rounded overflow-hidden text-sm">
-          <thead><tr class="bg-gray-800 text-gray-300"><th>#</th><th>عنوان</th><th>مختصر</th><th>تاریخ</th><th>ویرایش</th><th>حذف</th></tr></thead>
+          <thead>
+            <tr class="bg-gray-800 text-gray-300">
+              <th>#</th><th>عنوان</th><th>مختصر</th><th>تاریخ</th><th>ویرایش</th><th>حذف</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="(a, idx) in announcements" :key="a.id" class="border-b border-gray-600 hover:bg-gray-600">
-              <td class="px-2 py-1 text-center">{{ idx + 1 }}</td>
+              <td class="px-2 py-1 text-center">{{ idx+1 }}</td>
               <td class="px-2">{{ a.title }}</td>
-              <td class="px-2">{{ a.shortDescription || '—' }}</td>
+              <td class="px-2">{{ a.shortDescription||'—' }}</td>
               <td class="px-2">{{ new Date(a.createdAt).toLocaleDateString('fa-IR') }}</td>
-              <td class="px-2 text-center"><button class="btn-primary px-2 py-1 text-sm" @click="openEditForm(a)">ویرایش</button></td>
-              <td class="px-2 text-center"><button class="btn-secondary px-2 py-1 text-sm" @click="deleteAnnouncement(a)">حذف</button></td>
+              <td class="px-2 text-center"><button class="btn-primary px-2 py-1" @click="openEditForm(a)">ویرایش</button></td>
+              <td class="px-2 text-center"><button class="btn-secondary px-2 py-1" @click="deleteAnnouncement(a)">حذف</button></td>
             </tr>
           </tbody>
         </table>
-        <!-- Modal -->
+
+        <!-- Modal Create/Edit -->
         <div v-if="showForm" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-gray-800 p-6 rounded-xl w-2/5 space-y-4">
+          <div class="bg-gray-800 p-6 rounded-lg w-2/5 space-y-4">
             <h3 class="text-xl font-bold">{{ editingId ? 'ویرایش اطلاعیه' : 'ایجاد اطلاعیه جدید' }}</h3>
+
+            <!-- Title & Descriptions -->
             <input v-model="form.title" placeholder="عنوان *" class="input-field w-full" />
-            <input v-model="form.shortDescription" placeholder="توضیح مختصر" class="input-field w-full" />
-            <textarea v-model="form.longDescription" placeholder="توضیح مفصل" class="input-field w-full h-24"></textarea>
-            <input type="file" @change="onFileChange" class="w-full" />
+            <input v-model="form.shortDescription" placeholder="مختصر" class="input-field w-full" />
+            <textarea v-model="form.longDescription" placeholder="توضیح کامل" class="input-field w-full h-24"></textarea>
+
+            <!-- Existing Attachments -->
+            <div v-if="form.attachments.length">
+              <p class="font-medium">ضمائم فعلی:</p>
+              <ul class="space-y-2">
+                <li v-for="(att, i) in form.attachments" :key="att.id" class="border border-gray-600 p-2 rounded">
+                  <div class="flex justify-between items-center">
+                    <a :href="att.path" target="_blank" class="underline text-blue-400">{{ att.displayName }}</a>
+                    <button @click="markForDelete(att.id)" class="text-red-400">حذف</button>
+                  </div>
+                  <input
+                    v-model="form.attachments[i].displayName"
+                    placeholder="نام روی دکمه دانلود"
+                    class="input-field w-full mt-2"
+                  />
+                </li>
+              </ul>
+            </div>
+
+            <!-- New Files -->
+            <div v-if="form.newFiles.length">
+              <p class="font-medium">فایل‌های جدید:</p>
+              <ul class="space-y-2">
+                <li v-for="(obj, i) in form.newFiles" :key="i" class="border border-gray-600 p-2 rounded">
+                  <div class="flex justify-between items-center">
+                    <span>{{ obj.file.name }}</span>
+                    <button @click="removeNewFile(i)" class="text-red-400">×</button>
+                  </div>
+                  <input
+                    v-model="form.newFiles[i].displayName"
+                    placeholder="نام روی دکمه دانلود"
+                    class="input-field w-full mt-2"
+                  />
+                </li>
+              </ul>
+            </div>
+
+            <!-- File Input -->
+            <input type="file" multiple @change="onFileChange" class="w-full" />
+
+            <!-- Actions -->
             <div class="flex justify-end space-x-2">
               <button @click="closeForm" class="btn-secondary px-4 py-2">انصراف</button>
               <button @click="saveAnnouncement" class="btn-primary px-4 py-2">{{ editingId ? 'ذخیره' : 'ایجاد' }}</button>
@@ -135,10 +198,14 @@
       <section id="groups" class="content-section" :class="{'active fade-in': activeSection==='groups'}">
         <h2 class="text-2xl font-bold mb-4">مدیریت گروه‌ها</h2>
         <table class="min-w-full bg-gray-700 rounded overflow-hidden text-sm">
-          <thead><tr class="bg-gray-800 text-gray-300"><th>#</th><th>نام گروه</th><th>کد</th><th>کد کیف پول</th><th>امتیاز</th><th>اعضا</th><th>سرگروه</th><th>ذخیره</th><th>حذف</th></tr></thead>
+          <thead>
+            <tr class="bg-gray-800 text-gray-300">
+              <th>#</th><th>نام گروه</th><th>کد</th><th>کیف پول</th><th>امتیاز</th><th>اعضا</th><th>سرگروه</th><th>ذخیره</th><th>حذف</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr v-for="(g, idx) in groups" :key="g.id" class="border-b border-gray-600 hover:bg-gray-600">
-              <td class="px-2 py-1 text-center">{{ idx + 1 }}</td>
+            <tr v-for="(g,idx) in groups" :key="g.id" class="border-b border-gray-600 hover:bg-gray-600">
+              <td class="px-2 py-1 text-center">{{ idx+1 }}</td>
               <td class="px-2"><input v-model="g.name" class="input-field w-full text-sm"></td>
               <td class="px-2"><input v-model="g.code" class="input-field w-full text-sm"></td>
               <td class="px-2"><input v-model="g.walletCode" class="input-field w-full text-sm"></td>
@@ -152,10 +219,15 @@
         </table>
       </section>
 
-      <!-- Empty Sections -->
-      <section id="items" class="content-section" :class="{'active fade-in': activeSection==='items'}"><h2 class="text-2xl font-bold">آیتم‌ها</h2></section>
-      <section id="contents" class="content-section" :class="{'active fade-in': activeSection==='contents'}"><h2 class="text-2xl font-bold">محتواها</h2></section>
+      <!-- Items Section -->
+      <section id="items" class="content-section" :class="{'active fade-in': activeSection==='items'}">
+        <h2 class="text-2xl font-bold">آیتم‌ها</h2>
+      </section>
 
+      <!-- Contents Section -->
+      <section id="contents" class="content-section" :class="{'active fade-in': activeSection==='contents'}">
+        <h2 class="text-2xl font-bold">محتواها</h2>
+      </section>
     </div>
   </div>
 
