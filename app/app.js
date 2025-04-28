@@ -1,5 +1,4 @@
 // app.js
-
 require('dotenv').config();
 const express        = require('express');
 const path           = require('path');
@@ -7,7 +6,6 @@ const http           = require('http');
 const socketIO       = require('socket.io');
 const session        = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
-const multer         = require('multer');
 const { sequelize, Admin } = require('./models');
 
 const app    = express();
@@ -34,13 +32,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ————— Multer for file uploads —————
-const upload = multer({
-  dest: path.join(__dirname, 'public', 'uploads'),
-  limits: { fileSize: 10 * 1024 * 1024 }  // max 10MB
-});
-app.locals.upload = upload;
-
 // ————— Middlewares —————
 function isAdmin(req, res, next) {
   if (req.session.adminId) return next();
@@ -48,48 +39,45 @@ function isAdmin(req, res, next) {
 }
 function isUser(req, res, next) {
   if (req.session.userId) return next();
-  res.redirect('/');
+  res.redirect('/login');
 }
 
 // ————— Routes —————
 
-// Auth routes & login page
+// 1. Auth & login page
 app.get('/', (req, res) => res.render('auth'));
 app.use('/', require('./routes/auth'));
 
-// Admin panel routes
+// 2. Admin panel (pages & API)
 const adminRouter = require('./routes/admin')(io);
 app.use('/admin', isAdmin, adminRouter);
 
-// Announcements CRUD API
-const announcementRoutes = require('./routes/announcements')(io);
-app.use('/admin/api/announcements', isAdmin, announcementRoutes);
+// 3. Announcements router (public & admin)
+const announcementsRouter = require('./routes/announcements')(io);
+// 3a. Public: list announcements
+app.use('/api/announcements', announcementsRouter);
+// 3b. Admin: CRUD announcements
+app.use('/admin/api/announcements', isAdmin, announcementsRouter);
 
-// Admin Groups CRUD API  (✔ اضافه شده برای گروه‌ها)
+// 4. Admin Groups CRUD API
 const adminGroupsRouter = require('./routes/adminGroups')(io);
 app.use('/admin/api/groups', isAdmin, adminGroupsRouter);
 
-// User panel (dashboard)
+// 5. User panel (dashboard & groups)
 const groupRoutes = require('./routes/group');
 app.use('/api/groups', isUser, groupRoutes);
-
 app.use('/dashboard', isUser, require('./routes/user'));
 
-// ————— Socket.IO connection logging —————
+// ————— Socket.IO logging —————
 io.on('connection', socket => {
   console.log('Socket connected:', socket.id);
 });
 
 // ————— Seed default admin & start server —————
 async function seedAdmin() {
-  const exists = await Admin.findOne({
-    where: { phoneNumber: '09912807001' }
-  });
+  const exists = await Admin.findOne({ where: { phoneNumber: '09912807001' } });
   if (!exists) {
-    await Admin.create({
-      phoneNumber: '09912807001',
-      password: 'F@rdad6831'
-    });
+    await Admin.create({ phoneNumber: '09912807001', password: 'F@rdad6831' });
   }
 }
 
