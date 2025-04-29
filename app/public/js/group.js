@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // dashboard cards
   const cardScore         = document.getElementById('card-score');
   const cardGroup         = document.getElementById('card-group');
+  const cardRank          = document.getElementById('card-rank'); 
   const cardAnnouncements = document.getElementById('card-announcements');
 
   // group logic
@@ -10,6 +11,8 @@ document.addEventListener('DOMContentLoaded', function(){
   async function loadMyGroup(){
     cardScore.textContent = '—';
     cardGroup.textContent = '—';
+    cardRank.textContent = '—';
+    cardAnnouncements.textContent = '—';
     setLoadingState(true);  // فعال کردن اسپینر
     try {
       const r = await axios.get('/api/groups/my');
@@ -19,7 +22,23 @@ document.addEventListener('DOMContentLoaded', function(){
         const g = r.data.group;
         cardScore.textContent = g.score;
         cardGroup.textContent = g.name;
+        cardRank.textContent  = g.rank;
         renderGroupDashboard(g, r.data.role);
+      }
+      try {
+        const resA = await axios.get('/api/announcements');
+        const arr  = Array.isArray(resA.data) ? resA.data : [];
+        if (arr.length) {
+          arr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          cardAnnouncements.textContent = arr[0].title;
+        } else {
+          cardAnnouncements.textContent = '—';
+        }
+
+        
+      } catch (e) {
+        console.error('خطا در واکشی اعلان‌ها', e);
+        cardAnnouncements.textContent = '—';
       }
     } catch(err){
       console.error(err);
@@ -107,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function(){
           <div><p class="text-gray-400 text-sm">رتبه</p><p class="text-white">${g.rank}</p></div>
         </div>
         <div class="flex items-center justify-center space-x-2 mx-auto w-max bg-gray-600 p-3 rounded">
-          <span class="text-gray-300 text-sm">کد گروه:</span>
+          <span class="text-gray-300 text-sm pl-2">کد گروه:</span>
           <input id="code-8" type="text" readonly value="${g.code}"
                  class="input-field text-center w-28 text-sm bg-gray-700 border-gray-500" />
           <button class="btn-primary px-2 py-1 text-sm" onclick="navigator.clipboard.writeText('${g.code}')">

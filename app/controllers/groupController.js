@@ -82,7 +82,7 @@ exports.getMyGroup = async (req, res) => {
     const membership = await GroupMember.findOne({ where:{ userId } });
     if (!membership) return res.json({ member:false });
 
-    // واکشی اطلاعات گروه
+    // واکشی اطلاعات گروه با سرگروه
     const group = await Group.findByPk(membership.groupId, {
       include: [
         { model: User, as:'leader', attributes:['id','firstName','lastName'] }
@@ -90,15 +90,16 @@ exports.getMyGroup = async (req, res) => {
     });
     if (!group) return res.status(404).json({ member:false, message:'گروه یافت نشد' });
 
-    // واکشی اعضا
-    const members = await group.getUsers({
+    // واکشی اعضا با alias درستِ association
+    const members = await group.getMembers({
       joinTableAttributes: [],
-      attributes:['id','firstName','lastName']
+      attributes: ['id','firstName','lastName']
     });
 
-    // محاسبه رتبه
-    const all = await Group.findAll({ order:[['score','DESC']] });
-    const rank = all.findIndex(g=>g.id===group.id) + 1;
+    // محاسبه رتبه (dense ranking)
+    const allGroups = await Group.findAll({ order:[['score','DESC']] });
+    const distinctScores = [...new Set(allGroups.map(g => g.score))];
+    const rank = distinctScores.indexOf(group.score) + 1;
 
     res.json({
       member: true,
@@ -109,7 +110,7 @@ exports.getMyGroup = async (req, res) => {
         code: group.code,
         score: group.score,
         rank,
-        members: members.map(u=>({ id:u.id, name:`${u.firstName} ${u.lastName}` }))
+        members: members.map(u => ({ id:u.id, name:`${u.firstName} ${u.lastName}` }))
       }
     });
   } catch(err) {
@@ -124,13 +125,21 @@ exports.getRanking = async (req, res) => {
       order:[['score','DESC']],
       include:[{ model: User, as:'leader', attributes:['firstName','lastName'] }]
     });
-    res.json(groups.map((g,i)=>({
-      id: g.id,
-      name: g.name,
-      score: g.score,
-      rank: i+1,
-      leader: `${g.leader.firstName} ${g.leader.lastName}`
-    })));
+
+    // محاسبه dense ranking برای تمام گروه‌ها
+    const distinctScores = [...new Set(groups.map(g => g.score))];
+    const result = groups.map(g => {
+      const rank = distinctScores.indexOf(g.score) + 1;
+      return {
+        id: g.id,
+        name: g.name,
+        score: g.score,
+        rank,
+        leader: `${g.leader.firstName} ${g.leader.lastName}`
+      };
+    });
+
+    res.json(result);
   } catch(err) {
     console.error('getRanking error:', err);
     res.status(500).json({ message:'خطای سرور در بارگذاری رتبه‌بندی' });

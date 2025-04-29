@@ -8,13 +8,24 @@ module.exports = (io) => {
   // گرفتن لیست گروه‌ها
   router.get('/', async (req, res) => {
     try {
+      // بارگذاری گروه‌ها با سرگروه و اعضا
       const groups = await Group.findAll({
         include: [
           { model: User, as: 'leader', attributes: ['id', 'firstName', 'lastName'] },
           { model: User, as: 'members', attributes: ['id'] }
         ]
       });
-      res.json(groups);
+
+      // اگر به هر دلیلی leader=null باشد، یک مقدار پیش‌فرض قرار ده
+      const safe = groups.map(g => {
+        const grp = g.toJSON();  
+        if (!grp.leader) {
+          grp.leader = { id: null, firstName: '-', lastName: '-' };
+        }
+        return grp;
+      });
+
+      res.json(safe);
     } catch (err) {
       console.error(err);
       res.status(500).send('خطا در دریافت گروه‌ها');
@@ -26,7 +37,11 @@ module.exports = (io) => {
     try {
       const group = await Group.findByPk(req.params.id);
       if (!group) return res.status(404).send('گروه پیدا نشد');
-      await group.update(req.body);
+
+      // فقط فیلدهای مجاز را به‌روزرسانی کن
+      const { name, code, walletCode, score } = req.body;
+      await group.update({ name, code, walletCode, score });
+
       io.emit('groupUpdated', group);
       res.json(group);
     } catch (err) {
@@ -40,9 +55,13 @@ module.exports = (io) => {
     try {
       const group = await Group.findByPk(req.params.id);
       if (!group) return res.status(404).send('گروه پیدا نشد');
-      await group.setMembers([]); // اعضا رو از گروه حذف کن
+
+      // اول اعضای گروه را خالی کن
+      await group.setMembers([]);
+      // سپس خود گروه را حذف کن
       await group.destroy();
-      io.emit('groupDeleted', { id: parseInt(req.params.id) });
+
+      io.emit('groupDeleted', { id: parseInt(req.params.id, 10) });
       res.sendStatus(204);
     } catch (err) {
       console.error(err);
