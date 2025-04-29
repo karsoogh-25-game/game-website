@@ -235,3 +235,22 @@ exports.transfer = async (req, res) => {
     res.status(500).json({ success:false, message:'خطای سرور در انتقال' });
   }
 };
+
+/**
+ * GET /api/groups/name/:code
+ * برمی‌گرداند { name } گروه بر اساس walletCode
+ */
+exports.getGroupNameByCode = async (req, res) => {
+  try {
+    const code = req.params.code;
+    const target = await Group.findOne({ where: { walletCode: code } });
+    if (!target) {
+      return res.status(404).json({ message: 'گروه مقصد یافت نشد' });
+    }
+    return res.json({ name: target.name });
+  } catch (err) {
+    console.error('getGroupName error:', err);
+    return res.status(500).json({ message: 'خطای سرور' });
+  }
+};
+
