@@ -1,50 +1,61 @@
 'use strict';
+
 module.exports = (sequelize, DataTypes) => {
   const Group = sequelize.define('Group', {
     name: {
       type: DataTypes.STRING,
       allowNull: false
     },
-    code: {                           // کد ۸ رقمی یکتا
+    code: {                           // کد ۸ رقمی یکتا برای شناسایی گروه
       type: DataTypes.STRING(8),
       allowNull: false,
       unique: true
     },
-    walletCode: {                     // کد کیف پول ۴ رقمی
+    walletCode: {                     // کد کیف پول ۴ رقمی یکتا
       type: DataTypes.STRING(4),
       allowNull: false,
       unique: true
     },
-    score: {                          // امتیاز گروه
+    score: {                          // موجودی کیف‌پول (امتیاز گروه)
       type: DataTypes.INTEGER,
       defaultValue: 250,
-      validate: { min: 0 }
+      validate: {
+        min: 0
+      }
     }
   }, {
     hooks: {
+      // قبل از اعتبارسنجی، اگر کدها تنظیم نشده‌اند، تولید و یکتا شوند
       beforeValidate: async (group) => {
-        // تولید کد گروه یکتا
+        // تولید کد گروه یکتا (۸ حرف/عدد)
         if (!group.code) {
-          const rnd = () => Math.random().toString(36).substr(2,8).toUpperCase();
-          let c; do { c = rnd(); }
-          while (await Group.findOne({ where:{ code:c } }));
-          group.code = c;
+          const rndCode = () => Math.random().toString(36).substr(2, 8).toUpperCase();
+          let newCode;
+          do {
+            newCode = rndCode();
+          } while (await Group.findOne({ where: { code: newCode } }));
+          group.code = newCode;
         }
-        // تولید کد کیف پول یکتا
+
+        // تولید کد کیف‌پول یکتا (۴ رقم)
         if (!group.walletCode) {
-          let w;
-          do { w = String(Math.floor(1000 + Math.random()*9000)); }
-          while (await Group.findOne({ where:{ walletCode:w } }));
-          group.walletCode = w;
+          let newWallet;
+          do {
+            // از 1000 تا 9999
+            newWallet = String(Math.floor(1000 + Math.random() * 9000));
+          } while (await Group.findOne({ where: { walletCode: newWallet } }));
+          group.walletCode = newWallet;
         }
       }
     }
   });
 
+  // تعریف ارتباطات
   Group.associate = models => {
-    // هر گروه یک سرگروه (User) دارد
-    Group.belongsTo(models.User, { as:'leader', foreignKey:'leaderId' });
-    // اعضای گروه (User) از طریق جدول میانی
+    // هر گروه یک سرگروه از نوع User دارد
+    Group.belongsTo(models.User, { as: 'leader', foreignKey: 'leaderId' });
+
+    // اعضای گروه از طریق جدول میانی GroupMember
     Group.belongsToMany(models.User, {
       through: models.GroupMember,
       as: 'members',

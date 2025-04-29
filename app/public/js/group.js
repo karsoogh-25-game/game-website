@@ -16,8 +16,14 @@ document.addEventListener('DOMContentLoaded', function(){
     setLoadingState(true);  // فعال کردن اسپینر
     try {
       const r = await axios.get('/api/groups/my');
+      // r.data.member: آیا عضو گروه است؟
+      // r.data.role: 'user' | 'leader' | 'mentor'
       if (!r.data.member) {
-        renderNotMember();
+        if (r.data.role === 'mentor') {
+          renderMentorBank();
+        } else {
+          renderNotMember();
+        }
       } else {
         const g = r.data.group;
         cardScore.textContent = g.score;
@@ -25,6 +31,8 @@ document.addEventListener('DOMContentLoaded', function(){
         cardRank.textContent  = g.rank;
         renderGroupDashboard(g, r.data.role);
       }
+
+      // اعلان‌ها
       try {
         const resA = await axios.get('/api/announcements');
         const arr  = Array.isArray(resA.data) ? resA.data : [];
@@ -34,12 +42,11 @@ document.addEventListener('DOMContentLoaded', function(){
         } else {
           cardAnnouncements.textContent = '—';
         }
-
-        
       } catch (e) {
         console.error('خطا در واکشی اعلان‌ها', e);
         cardAnnouncements.textContent = '—';
       }
+
     } catch(err){
       console.error(err);
       groupArea.innerHTML = `<p class="error text-center">خطا در بارگذاری وضعیت گروه: ${err.response?.data?.message||err.message}</p>`;
@@ -73,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <p id="group-error" class="error mt-2"></p>
       </div>`;
     document.getElementById('btn-do-create').onclick = async () => {
-      setLoadingState(true);  // فعال کردن اسپینر
+      setLoadingState(true);
       try {
         const name = document.getElementById('inp-name').value;
         await axios.post('/api/groups/create', { name });
@@ -83,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function(){
         document.getElementById('group-error').innerText = e.response.data.message;
         sendNotification('error', 'خطا در ایجاد گروه');
       } finally {
-        setLoadingState(false);  // غیرفعال کردن اسپینر بعد از اتمام
+        setLoadingState(false);
       }
     };
     document.getElementById('btn-cancel-create').onclick = loadMyGroup;
@@ -101,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <p id="group-error" class="error mt-2"></p>
       </div>`;
     document.getElementById('btn-do-join').onclick = async () => {
-      setLoadingState(true);  // فعال کردن اسپینر
+      setLoadingState(true);
       try {
         const code = document.getElementById('inp-code').value;
         await axios.post('/api/groups/add-member', { code });
@@ -111,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function(){
         document.getElementById('group-error').innerText = e.response.data.message;
         sendNotification('error', 'خطا در پیوستن به گروه');
       } finally {
-        setLoadingState(false);  // غیرفعال کردن اسپینر بعد از اتمام
+        setLoadingState(false);
       }
     };
     document.getElementById('btn-cancel-join').onclick = loadMyGroup;
@@ -133,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function(){
             <i class="fas fa-copy ml-1"></i> کپی
           </button>
         </div>
+
         <h4 class="text-white font-bold">اعضا</h4>
         <table class="min-w-full bg-gray-600 rounded overflow-hidden text-sm">
           <thead><tr class="bg-gray-700 text-gray-300"><th class="px-3 py-1">نام</th><th class="px-3 py-1">نقش</th></tr></thead>
@@ -143,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function(){
             </tr>`).join('')}
           </tbody>
         </table>
+
         <div class="flex justify-center space-x-4">
           <button id="btn-leave" class="btn-secondary px-3 py-1 text-sm mx-2">خروج</button>
           ${role==='leader' ? `<button id="btn-delete" class="btn-primary px-3 py-1 text-sm mx-2">حذف</button>` : ``}
@@ -150,6 +159,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <p id="group-error" class="error text-center"></p>
       </div>`;
 
+    // عملیات خروج و حذف
     document.getElementById('btn-leave').onclick = async () => {
       sendConfirmationNotification('confirm', 'آیا مطمئن هستید که می‌خواهید از گروه خارج شوید؟', async (confirmed) => {
         if (confirmed) {
@@ -159,6 +169,7 @@ document.addEventListener('DOMContentLoaded', function(){
             sendNotification('info', 'از گروه خارج شدید');
           } catch (e) {
             document.getElementById('group-error').innerText = e.response.data.message;
+            sendNotification('error', 'خطا در خروج از گروه');
           }
         } else {
           sendNotification('info', 'خروج از گروه لغو شد');
@@ -186,11 +197,43 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   }
 
+  // منطق انتقال امتیاز (اکنون استفاده نمی‌شود)
+  async function doTransfer(){
+    const code = document.getElementById('bank-target-code').value;
+    const amount = document.getElementById('bank-amount').value;
+    setLoadingState(true);
+    try {
+      await axios.post('/api/groups/transfer', { targetCode:code, amount });
+      sendNotification('success','انتقال با موفقیت انجام شد');
+      loadMyGroup();
+    } catch(e) {
+      const msg = e.response?.data?.message || e.message;
+      document.getElementById('group-error').textContent = msg;
+      sendNotification('error','خطا در انتقال: '+msg);
+    } finally {
+      setLoadingState(false);
+    }
+  }
+
+  // فرم انتقال برای منتور (استفاده نمی‌شود)
+  function renderMentorBank(){
+    groupArea.innerHTML = `
+      <div class="bg-gray-700 rounded-lg p-6 text-center max-w-md mx-auto">
+        <p class="text-gray-300 mb-4">انتقال امتیاز (منتور)</p>
+        <input id="bank-target-code" class="input-field w-full mb-2" placeholder="کد ۴ رقمی کیف پول گروه" maxlength="4"/>
+        <input id="bank-amount" type="number" min="1" class="input-field w-full mb-2" placeholder="مبلغ انتقال"/>
+        <button id="btn-bank-transfer" class="btn-primary w-full py-2">انتقال</button>
+        <p id="bank-error" class="error mt-2"></p>
+      </div>`;
+    document.getElementById('btn-bank-transfer').onclick = doTransfer;
+  }
+
   // real-time via socket.io
   const socket = io();
   socket.on('memberJoined', loadMyGroup);
   socket.on('memberRemoved', loadMyGroup);
   socket.on('groupDeleted', renderNotMember);
+  socket.on('bankUpdate', loadMyGroup);
 
   // Notifications button handler
   document.getElementById('btn-notifications').addEventListener('click', e=>{

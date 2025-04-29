@@ -25,22 +25,18 @@ exports.addMember = async (req, res) => {
   const userId = req.session.userId;
   const { code } = req.body;
   try {
-    // کاربر نباید قبلاً عضو گروه دیگری باشد
     const already = await GroupMember.findOne({ where:{ userId } });
     if (already) {
       return res.status(400).json({ success:false, message:'شما در گروه دیگری هستید.' });
     }
-    // پیدا کردن گروه با کد ۸ رقمی
     const group = await Group.findOne({ where:{ code } });
     if (!group) {
       return res.status(404).json({ success:false, message:'کد گروه نادرست است.' });
     }
-    // بررسی تعداد اعضا (حداکثر 3)
     const count = await GroupMember.count({ where:{ groupId: group.id } });
     if (count >= 3) {
       return res.status(400).json({ success:false, message:'گروه پر است.' });
     }
-    // اضافه کردن عضو
     await GroupMember.create({ groupId: group.id, userId, role:'member' });
     res.json({ success:true });
   } catch(err) {
@@ -55,15 +51,15 @@ exports.leaveGroup = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     await GroupMember.destroy({ where:{ groupId, userId } }, { transaction:t });
-    const wasLeader = (await Group.findByPk(groupId)).leaderId === userId;
-    if (wasLeader) {
+    const group = await Group.findByPk(groupId, { transaction:t });
+    if (group.leaderId === userId) {
       const others = await GroupMember.findAll({ where:{ groupId }, transaction:t });
       if (others.length > 0) {
         const nxt = others[Math.floor(Math.random()*others.length)];
         await Group.update({ leaderId:nxt.userId }, { where:{ id:groupId }, transaction:t });
         await GroupMember.update({ role:'leader' }, { where:{ groupId, userId:nxt.userId }, transaction:t });
       } else {
-        await Group.destroy({ where:{ id:groupId }, transaction:t });
+        await group.destroy({ transaction:t });
       }
     }
     await t.commit();
@@ -78,9 +74,15 @@ exports.leaveGroup = async (req, res) => {
 exports.getMyGroup = async (req, res) => {
   const userId = req.session.userId;
   try {
+    // بررسی نقش
+    const me = await User.findByPk(userId);
+    if (me.role === 'mentor') {
+      return res.json({ member:false, role:'mentor' });
+    }
+
     // بررسی عضویت
     const membership = await GroupMember.findOne({ where:{ userId } });
-    if (!membership) return res.json({ member:false });
+    if (!membership) return res.json({ member:false, role:'user' });
 
     // واکشی اطلاعات گروه با سرگروه
     const group = await Group.findByPk(membership.groupId, {
@@ -90,13 +92,13 @@ exports.getMyGroup = async (req, res) => {
     });
     if (!group) return res.status(404).json({ member:false, message:'گروه یافت نشد' });
 
-    // واکشی اعضا با alias درستِ association
+    // واکشی اعضا
     const members = await group.getMembers({
-      joinTableAttributes: [],
+      joinTableAttributes: ['role'],
       attributes: ['id','firstName','lastName']
     });
 
-    // محاسبه رتبه (dense ranking)
+    // محاسبه رتبه (dense)
     const allGroups = await Group.findAll({ order:[['score','DESC']] });
     const distinctScores = [...new Set(allGroups.map(g => g.score))];
     const rank = distinctScores.indexOf(group.score) + 1;
@@ -108,9 +110,10 @@ exports.getMyGroup = async (req, res) => {
         id: group.id,
         name: group.name,
         code: group.code,
+        walletCode: group.walletCode,
         score: group.score,
         rank,
-        members: members.map(u => ({ id:u.id, name:`${u.firstName} ${u.lastName}` }))
+        members: members.map(u => ({ id:u.id, name:`${u.firstName} ${u.lastName}`, role:u.GroupMember.role }))
       }
     });
   } catch(err) {
@@ -125,20 +128,14 @@ exports.getRanking = async (req, res) => {
       order:[['score','DESC']],
       include:[{ model: User, as:'leader', attributes:['firstName','lastName'] }]
     });
-
-    // محاسبه dense ranking برای تمام گروه‌ها
     const distinctScores = [...new Set(groups.map(g => g.score))];
-    const result = groups.map(g => {
-      const rank = distinctScores.indexOf(g.score) + 1;
-      return {
-        id: g.id,
-        name: g.name,
-        score: g.score,
-        rank,
-        leader: `${g.leader.firstName} ${g.leader.lastName}`
-      };
-    });
-
+    const result = groups.map(g => ({
+      id: g.id,
+      name: g.name,
+      score: g.score,
+      rank: distinctScores.indexOf(g.score) + 1,
+      leader: `${g.leader.firstName} ${g.leader.lastName}`
+    }));
     res.json(result);
   } catch(err) {
     console.error('getRanking error:', err);
@@ -175,5 +172,66 @@ exports.deleteGroup = async (req, res) => {
   } catch(err) {
     console.error('deleteGroup error:', err);
     res.status(500).json({ success:false, message:'خطای سرور' });
+  }
+};
+
+/**
+ * متد انتقال امتیاز
+ */
+exports.transfer = async (req, res) => {
+  const io = req.app.get('io');
+  const userId = req.session.userId;
+  const { targetCode, amount } = req.body;
+  const amt = parseInt(amount, 10);
+  if (!targetCode || !amt || amt <= 0) {
+    return res.status(400).json({ success:false, message:'کد و مبلغ معتبر لازم است' });
+  }
+
+  const t = await sequelize.transaction();
+  try {
+    // پیدا کردن گروه مقصد بر اساس walletCode
+    const target = await Group.findOne({ where:{ walletCode: targetCode }}, { transaction:t });
+    if (!target) {
+      await t.rollback();
+      return res.status(404).json({ success:false, message:'گروه مقصد یافت نشد' });
+    }
+
+    // شناسایی نقش کاربر
+    const me = await User.findByPk(userId, { transaction:t });
+
+    if (me.role === 'mentor') {
+      // منتور: اعتبار نامحدود، فقط افزایش می‌دهد
+    } else {
+      // سرگروه: باید عضو و نقش leader باشد
+      const membership = await GroupMember.findOne({ where:{ userId }}, { transaction:t });
+      if (!membership || membership.role !== 'leader') {
+        await t.rollback();
+        return res.status(403).json({ success:false, message:'فقط سرگروه می‌تواند انتقال دهد' });
+      }
+      const fromGroup = await Group.findByPk(membership.groupId, { transaction:t });
+      if (fromGroup.score < amt) {
+        await t.rollback();
+        return res.status(400).json({ success:false, message:'موجودی کافی نیست' });
+      }
+      // کسر امتیاز
+      fromGroup.score -= amt;
+      await fromGroup.save({ transaction:t });
+      io.emit('bankUpdate', { code: fromGroup.walletCode });
+    }
+
+    // افزایش امتیاز گروه مقصد
+    target.score += amt;
+    await target.save({ transaction:t });
+
+    await t.commit();
+
+    // اطلاع‌رسانی ریل‌تایم
+    io.emit('bankUpdate', { code: target.walletCode });
+
+    res.json({ success:true });
+  } catch(err) {
+    await t.rollback();
+    console.error('transfer error:', err);
+    res.status(500).json({ success:false, message:'خطای سرور در انتقال' });
   }
 };

@@ -12,6 +12,9 @@ const app    = express();
 const server = http.createServer(app);
 const io     = socketIO(server);
 
+// ———— make io available in controllers ————
+app.set('io', io);
+
 // ————— Session setup —————
 const sessionStore = new SequelizeStore({ db: sequelize });
 app.use(session({

@@ -1,0 +1,95 @@
+// app/public/js/bank.js
+document.addEventListener('DOMContentLoaded', () => {
+  const bankArea   = document.getElementById('bank-area');
+  const headerRef  = document.getElementById('btn-refresh');
+  const socket     = io();
+
+  async function loadBank() {
+    setLoadingState(true);
+    bankArea.innerHTML = '';
+    try {
+      const r = await axios.get('/api/groups/my');
+
+      if (!r.data.member && r.data.role==='mentor') {
+        renderMentorBank();
+      }
+      else if (r.data.member) {
+        renderGroupBank(r.data.group, r.data.role);
+      }
+      else {
+        bankArea.innerHTML = `<p class="error text-red-400">ابتدا باید عضو گروه شوید.</p>`;
+      }
+    } catch (e) {
+      const msg = e.response?.data?.message||e.message;
+      bankArea.innerHTML = `<p class="error text-red-400">خطا در بارگذاری بانک: ${msg}</p>`;
+      sendNotification('error','خطا در بارگذاری بانک: '+msg);
+    } finally {
+      setLoadingState(false);
+    }
+  }
+
+  function renderGroupBank(g, role) {
+    bankArea.innerHTML = `
+      <div class="bg-gray-600 p-4 rounded space-y-2">
+        <p class="text-gray-300">موجودی: <span class="text-white font-bold">${g.score}</span></p>
+        <p class="text-gray-300">کد کیف‌پول: <span class="text-white">${g.walletCode}</span></p>
+        ${role==='leader'?`
+          <div class="space-y-2">
+            <input id="bank-target-code" class="input-field w-full" placeholder="کد ۴ رقمی مقصد" maxlength="4"/>
+            <input id="bank-amount" type="number" min="1" class="input-field w-full" placeholder="مبلغ انتقال"/>
+            <button id="btn-bank-transfer" class="btn-primary w-full py-2">انتقال</button>
+            <p id="bank-error" class="error text-red-400"></p>
+          </div>`:``}
+      </div>`;
+    if (role==='leader') document.getElementById('btn-bank-transfer').onclick = doTransfer;
+  }
+
+  function renderMentorBank() {
+    bankArea.innerHTML = `
+      <div class="bg-gray-600 p-4 rounded space-y-2">
+        <input id="bank-target-code" class="input-field w-full" placeholder="کد ۴ رقمی مقصد" maxlength="4"/>
+        <input id="bank-amount" type="number" min="1" class="input-field w-full" placeholder="مبلغ انتقال"/>
+        <button id="btn-bank-transfer" class="btn-primary w-full py-2">انتقال (منتور)</button>
+        <p id="bank-error" class="error text-red-400"></p>
+      </div>`;
+    document.getElementById('btn-bank-transfer').onclick = doTransfer;
+  }
+
+  function doTransfer(){
+    const code   = document.getElementById('bank-target-code').value;
+    const amount = document.getElementById('bank-amount').value;
+    sendConfirmationNotification('confirm','آیا از انتقال اطمینان دارید؟', async confirmed => {
+      if (!confirmed) return sendNotification('info','انتقال لغو شد');
+      setLoadingState(true);
+      try {
+        await axios.post('/api/groups/transfer',{ targetCode:code, amount });
+        sendNotification('success','انتقال با موفقیت انجام شد');
+        loadBank();
+      } catch (e) {
+        const msg = e.response?.data?.message||e.message;
+        document.getElementById('bank-error').textContent = msg;
+        sendNotification('error','خطا در انتقال: '+msg);
+      } finally {
+        setLoadingState(false);
+      }
+    });
+  }
+
+  // refresh via header
+  headerRef.addEventListener('click', ()=>{
+    if (document.querySelector('.content-section.active').id==='bank') loadBank();
+  });
+
+  // tab click
+  document.querySelectorAll('.menu-item').forEach(i=>{
+    i.addEventListener('click', ()=>{ if (i.dataset.section==='bank') loadBank() });
+  });
+
+  // real-time
+  socket.on('bankUpdate', ()=> {
+    if (document.querySelector('.content-section.active').id==='bank') loadBank();
+  });
+
+  // initial
+  if (document.querySelector('.menu-item.active')?.dataset.section==='bank') loadBank();
+});
