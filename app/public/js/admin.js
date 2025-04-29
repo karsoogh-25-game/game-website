@@ -9,6 +9,16 @@ new Vue({
     mentors: [],
     announcements: [],
     groups: [],
+    training: [],                 // ← آرایه‌ای برای نگهداری لیست محتواها
+    contentForm: {                // ← فرم ایجاد/ویرایش
+      title: '',
+      shortDescription: '',
+      longDescription: '',
+      attachments: [],
+      newFiles: []
+    },
+    editingContentId: null,
+    deletedContentIds: [],
     search: '',
     searchMentor: '',
     form: {
@@ -23,6 +33,7 @@ new Vue({
       deletedAttachments: []
     },
     showForm: false,
+    showContentForm: false,
     editingId: null,
     activeSection: 'users',
     sections: [
@@ -58,6 +69,11 @@ new Vue({
     socket.on('groupDeleted', ({ id }) => {
       this.groups = this.groups.filter(g => g.id !== id);
     });
+
+    // لیسنرهای محتوا
+    socket.on('contentCreated',  c => this.fetchTraining());
+    socket.on('contentUpdated',  c => this.fetchTraining());
+    socket.on('contentDeleted', ({id}) => this.fetchTraining());
 
     // بارگذاری بخش فعال
     this.loadSection();
@@ -120,6 +136,7 @@ new Vue({
       if (this.activeSection === 'mentors')       await this.fetchMentors();
       if (this.activeSection === 'announcements') await this.fetchAnnouncements();
       if (this.activeSection === 'groups')        await this.fetchGroups();
+      if (this.activeSection === 'contents')      await this.fetchTraining();
       this.setLoadingState(false);
     },
 
@@ -306,6 +323,80 @@ new Vue({
         this.sendNotification('success', 'گروه حذف شد');
       } catch {
         this.sendNotification('error', 'خطا در حذف گروه');
+      }
+    },
+
+    // ---- محتواها ----
+    async fetchTraining() {
+      try {
+        const res = await axios.get('/admin/api/training');
+        this.training = res.data;
+      } catch {
+        this.sendNotification('error', 'خطا در دریافت محتواها');
+      }
+    },
+    openCreateContentForm() {
+      this.editingContentId = null;
+      this.contentForm = { title:'', shortDescription:'', longDescription:'', attachments:[], newFiles:[] };
+      this.deletedContentIds = [];
+      this.showContentForm = true; // ← اینجا فعال می‌کنی
+    },
+    openEditContentForm(c) {
+      this.editingContentId = c.id;
+      this.contentForm = {
+        title: c.title,
+        shortDescription: c.shortDescription,
+        longDescription: c.longDescription,
+        attachments: c.attachments.map(a=>({ id:a.id, displayName:a.originalName, path:a.path }))
+      };
+      this.deletedContentIds = [];
+      this.newFiles = [];
+      this.showForm = true;
+    },
+    markContentForDelete(id) {
+      this.deletedContentIds.push(id);
+      this.contentForm.attachments = this.contentForm.attachments.filter(a=>a.id!==id);
+    },
+    handleContentFiles(e) {
+      Array.from(e.target.files).forEach(f=> this.contentForm.newFiles.push({ file:f, displayName:f.name }));
+    },
+    async saveContent() {
+      if (!this.contentForm.title.trim()) {
+        this.sendNotification('error','عنوان را وارد کنید');
+        return;
+      }
+      this.setLoadingState(true);
+      try {
+        const fd = new FormData();
+        fd.append('title', this.contentForm.title);
+        fd.append('shortDescription', this.contentForm.shortDescription);
+        fd.append('longDescription', this.contentForm.longDescription);
+        this.deletedContentIds.forEach(id=> fd.append('deleteIds[]', id));
+        this.contentForm.newFiles.forEach(nf=>{
+          fd.append('files', nf.file);
+          fd.append('displayNamesNew', nf.displayName);
+        });
+        const url = this.editingContentId
+          ? `/admin/api/training/${this.editingContentId}`
+          : '/admin/api/training';
+        await axios.post(url, fd, { headers:{ 'Content-Type':'multipart/form-data' }});
+        this.sendNotification('success','ذخیره شد');
+        this.showForm = false;
+        await this.fetchTraining();
+      } catch {
+        this.sendNotification('error','خطا در ذخیره محتوا');
+      } finally {
+        this.setLoadingState(false);
+      }
+    },
+    async deleteContent(c) {
+      if (!confirm(`آیا از حذف "${c.title}" مطمئن هستید؟`)) return;
+      try {
+        await axios.delete(`/admin/api/training/${c.id}`);
+        this.sendNotification('success','حذف شد');
+        this.fetchTraining();
+      } catch {
+        this.sendNotification('error','خطا در حذف محتوا');
       }
     }
   }

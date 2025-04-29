@@ -226,8 +226,79 @@
 
       <!-- Contents Section -->
       <section id="contents" class="content-section" :class="{'active fade-in': activeSection==='contents'}">
-        <h2 class="text-2xl font-bold">محتواها</h2>
+        <h2 class="text-2xl font-bold mb-4">مدیریت محتواها</h2>
+        <button @click="openCreateContentForm" class="btn-primary px-4 py-2 mb-4">ایجاد محتوای جدید</button>
+
+        <table class="min-w-full bg-gray-700 rounded overflow-hidden text-sm">
+          <thead class="bg-gray-800 text-gray-300">
+            <tr>
+              <th class="px-2 py-1">#</th>
+              <th class="px-2 py-1">عنوان</th>
+              <th class="px-2 py-1">مختصر</th>
+              <th class="px-2 py-1">تاریخ</th>
+              <th class="px-2 py-1">فایل‌ها</th>
+              <th class="px-2 py-1">ویرایش</th>
+              <th class="px-2 py-1">حذف</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(c, idx) in training" :key="c.id" class="border-b border-gray-600 hover:bg-gray-600">
+              <td class="px-2 py-1 text-center">{{ idx+1 }}</td>
+              <td class="px-2">{{ c.title }}</td>
+              <td class="px-2">{{ c.shortDescription||'—' }}</td>
+              <td class="px-2">{{ new Date(c.createdAt).toLocaleDateString('fa-IR') }}</td>
+              <td class="px-2">
+                <ul class="list-disc list-inside">
+                  <li v-for="att in c.attachments" :key="att.id">
+                    <a :href="att.path" target="_blank" class="underline text-blue-400">{{ att.originalName }}</a>
+                  </li>
+                </ul>
+              </td>
+              <td class="px-2 text-center">
+                <button @click="openEditContentForm(c)" class="btn-secondary px-2 py-1 text-sm">ویرایش</button>
+              </td>
+              <td class="px-2 text-center">
+                <button @click="deleteContent(c)" class="btn-primary px-2 py-1 text-sm">حذف</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Modal Create/Edit Content -->
+        <div v-if="showContentForm" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-gray-800 p-6 rounded-lg w-2/5 space-y-4">
+            <h3 class="text-xl font-bold">{{ editingContentId ? 'ویرایش محتوا' : 'ایجاد محتوا جدید' }}</h3>
+
+            <!-- Title & Descriptions -->
+            <input v-model="contentForm.title" placeholder="عنوان *" class="input-field w-full" />
+            <input v-model="contentForm.shortDescription" placeholder="مختصر" class="input-field w-full" />
+            <textarea v-model="contentForm.longDescription" placeholder="توضیح کامل" class="input-field w-full h-24"></textarea>
+
+            <!-- Existing Attachments -->
+            <div v-if="contentForm.attachments.length">
+              <p class="font-medium">ضمائم فعلی:</p>
+              <ul class="space-y-2">
+                <li v-for="(att, i) in contentForm.attachments" :key="att.id" class="border border-gray-600 p-2 rounded">
+                  <div class="flex justify-between items-center">
+                    <a :href="att.path" target="_blank" class="underline text-blue-400">{{ att.displayName }}</a>
+                    <button @click="markContentForDelete(att.id)" class="text-red-400">حذف</button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Upload New Files -->
+            <input type="file" multiple @change="handleContentFiles" class="w-full"/>
+
+            <!-- Actions -->
+            <div class="flex justify-end space-x-2">
+              <button @click="saveContent" class="btn-primary px-4 py-1">ذخیره</button>
+              <button @click="showContentForm=false" class="btn-secondary px-4 py-1">انصراف</button>
+            </div>
+          </div>
+        </div>
       </section>
+
     </div>
   </div>
 

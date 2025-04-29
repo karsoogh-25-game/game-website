@@ -68,6 +68,12 @@ const groupRoutes = require('./routes/group');
 app.use('/api/groups', isUser, groupRoutes);
 app.use('/dashboard', isUser, require('./routes/user'));
 
+// 6. training content (public & admin)
+const trainingRoutes = require('./routes/training'); 
+app.use('/api/training', trainingRoutes);
+app.use('/admin/api/training', trainingRoutes(io));
+
+
 // ————— Socket.IO logging —————
 io.on('connection', socket => {
   console.log('Socket connected:', socket.id);

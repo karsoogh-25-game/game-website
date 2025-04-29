@@ -21,6 +21,8 @@ db.Group                   = require('./group')(sequelize, DataTypes);
 db.GroupMember             = require('./GroupMember')(sequelize, DataTypes);
 db.Announcement            = require('./announcement')(sequelize, DataTypes);
 db.AnnouncementAttachment  = require('./announcementAttachment')(sequelize, DataTypes);
+db.Content                 = require('./content')(sequelize, DataTypes);
+db.ContentAttachment       = require('./contentAttachment')(sequelize, DataTypes);
 
 // set up associations
 Object.values(db).forEach(model => {

@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
               ${showToggle ? `
                 <div id="${id}"
                      class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out text-right px-6 pb-4">
-                  <div class="border-t border-slate-700 pt-4 space-y-4">
+                  <div class="border-y border-slate-700 py-4 space-y-4">
                     ${hasDetails ? `
                       <div>
                         <h4 class="font-medium text-blue-400 mb-2">جزئیات:</h4>
