@@ -68,10 +68,15 @@ const groupRoutes = require('./routes/group');
 app.use('/api/groups', isUser, groupRoutes);
 app.use('/dashboard', isUser, require('./routes/user'));
 
-// 6. training content (public & admin)
-const trainingRoutes = require('./routes/training'); 
-app.use('/api/training', trainingRoutes);
-app.use('/admin/api/training', trainingRoutes(io));
+// ————— 6. training content (public & admin) —————
+// برای ثبت GET/POST/DELETE های آموزشی، باید تابع را با io فراخوانی کنیم
+const trainingRouter = require('./routes/training')(io);
+
+// 6a. Public API: لیست محتواها
+app.use('/api/training', isUser, trainingRouter);
+
+// 6b. Admin API: ایجاد/آپدیت/حذف محتوا (اینجا می‌توان لاگین ادمین را اجباری کرد)
+app.use('/admin/api/training', isAdmin, trainingRouter);
 
 
 // ————— Socket.IO logging —————
