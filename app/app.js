@@ -39,7 +39,7 @@ function isAdmin(req, res, next) {
 }
 function isUser(req, res, next) {
   if (req.session.userId) return next();
-  res.redirect('/login');
+  res.redirect('/');
 }
 
 // ————— Routes —————
