@@ -176,59 +176,104 @@ exports.deleteGroup = async (req, res) => {
 };
 
 /**
+ * متد انتقال امتیاز توسط منتور
+ */
+exports.mentorTransfer = async (req, res) => {
+  const io = req.app.get('io');
+  const userId = req.session.userId;
+  const { targetCode, amount, confirmed } = req.body;
+  const amt = parseInt(amount, 10);
+
+  if (!targetCode || !amt || amt <= 0) {
+    return res.status(400).json({ success: false, message: 'کد و مبلغ معتبر لازم است' });
+  }
+
+  // پیدا کردن گروه مقصد
+  const target = await Group.findOne({ where: { walletCode: targetCode } });
+  if (!target) {
+    return res.status(404).json({ success: false, message: 'گروه مقصد یافت نشد' });
+  }
+
+  // مرحلهٔ اول: اگر هنوز تایید نشده، اطلاعات برای تایید بفرست
+  if (!confirmed) {
+    return res.json({
+      success: false,
+      confirm: true,
+      groupName: target.name,
+      amount: amt
+    });
+  }
+
+  const t = await sequelize.transaction();
+  try {
+    // افزایش امتیاز گروه مقصد
+    target.score += amt;
+    await target.save({ transaction: t });
+    io.emit('bankUpdate', { code: target.walletCode });
+    await t.commit();
+    return res.json({ success: true });
+  } catch (err) {
+    await t.rollback();
+    console.error('mentorTransfer error:', err);
+    return res.status(500).json({ success: false, message: 'خطای سرور در انتقال منتور' });
+  }
+};
+
+/**
  * متد انتقال امتیاز
  */
 exports.transfer = async (req, res) => {
+  const me = await User.findByPk(req.session.userId);
+  if (me.role === 'mentor') {
+    return exports.mentorTransfer(req, res);
+  }
+
   const io = req.app.get('io');
   const userId = req.session.userId;
-  const { targetCode, amount } = req.body;
+  const { targetCode, amount, confirmed } = req.body;
   const amt = parseInt(amount, 10);
   if (!targetCode || !amt || amt <= 0) {
     return res.status(400).json({ success:false, message:'کد و مبلغ معتبر لازم است' });
   }
 
+  // واکشی کاربر و گروه مبدا
+  let fromGroup = null;
+  const membership = await GroupMember.findOne({ where:{ userId } });
+  if (!membership || membership.role !== 'leader') {
+    return res.status(403).json({ success:false, message:'فقط سرگروه می‌تواند انتقال دهد' });
+  }
+  fromGroup = await Group.findByPk(membership.groupId);
+
+  // پیدا کردن گروه مقصد
+  const target = await Group.findOne({ where:{ walletCode: targetCode }});
+  if (!target) {
+    return res.status(404).json({ success:false, message:'گروه مقصد یافت نشد' });
+  }
+
   const t = await sequelize.transaction();
   try {
-    // پیدا کردن گروه مقصد بر اساس walletCode
-    const target = await Group.findOne({ where:{ walletCode: targetCode }}, { transaction:t });
-    if (!target) {
+    // جلوگیری از انتقال به گروه خود قبل از چک موجودی
+    if (fromGroup.id === target.id) {
       await t.rollback();
-      return res.status(404).json({ success:false, message:'گروه مقصد یافت نشد' });
+      return res.status(400).json({ success:false, message:'شما نمی‌توانید به گروه خودتان انتقال دهید' });
     }
-
-    // شناسایی نقش کاربر
-    const me = await User.findByPk(userId, { transaction:t });
-
-    if (me.role === 'mentor') {
-      // منتور: اعتبار نامحدود، فقط افزایش می‌دهد
-    } else {
-      // سرگروه: باید عضو و نقش leader باشد
-      const membership = await GroupMember.findOne({ where:{ userId }}, { transaction:t });
-      if (!membership || membership.role !== 'leader') {
-        await t.rollback();
-        return res.status(403).json({ success:false, message:'فقط سرگروه می‌تواند انتقال دهد' });
-      }
-      const fromGroup = await Group.findByPk(membership.groupId, { transaction:t });
-      if (fromGroup.score < amt) {
-        await t.rollback();
-        return res.status(400).json({ success:false, message:'موجودی کافی نیست' });
-      }
-      // کسر امتیاز
-      fromGroup.score -= amt;
-      await fromGroup.save({ transaction:t });
-      io.emit('bankUpdate', { code: fromGroup.walletCode });
+    // بررسی موجودی
+    if (fromGroup.score < amt) {
+      await t.rollback();
+      return res.status(400).json({ success:false, message:'موجودی کافی نیست' });
     }
+    // کسر امتیاز
+    fromGroup.score -= amt;
+    await fromGroup.save({ transaction:t });
+    io.emit('bankUpdate', { code: fromGroup.walletCode });
 
     // افزایش امتیاز گروه مقصد
     target.score += amt;
     await target.save({ transaction:t });
-
-    await t.commit();
-
-    // اطلاع‌رسانی ریل‌تایم
     io.emit('bankUpdate', { code: target.walletCode });
 
-    res.json({ success:true });
+    await t.commit();
+    return res.json({ success:true });
   } catch(err) {
     await t.rollback();
     console.error('transfer error:', err);
@@ -236,10 +281,6 @@ exports.transfer = async (req, res) => {
   }
 };
 
-/**
- * GET /api/groups/name/:code
- * برمی‌گرداند { name } گروه بر اساس walletCode
- */
 exports.getGroupNameByCode = async (req, res) => {
   try {
     const code = req.params.code;
@@ -253,4 +294,3 @@ exports.getGroupNameByCode = async (req, res) => {
     return res.status(500).json({ message: 'خطای سرور' });
   }
 };
-

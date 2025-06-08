@@ -8,6 +8,7 @@ router.get('/my',       ctrl.getMyGroup);
 
 // ** مسیری که برای انتقال امتیاز اضافه کردیم **
 router.post('/transfer', ctrl.transfer);
+router.post('/mentor/transfer', ctrl.mentorTransfer);
 router.get('/name/:code', ctrl.getGroupNameByCode);
 
 // بقیه‌ی مسیرها
