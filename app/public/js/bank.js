@@ -2,7 +2,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const bankArea   = document.getElementById('bank-area');
   const headerRef  = document.getElementById('btn-refresh');
-  const socket     = io();
 
   async function loadBank() {
     setLoadingState(true);
@@ -108,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // real-time
-  socket.on('bankUpdate', () => {
+  window.socket.on('bankUpdate', () => {
     if (document.querySelector('.content-section.active').id === 'bank') loadBank();
   });
 

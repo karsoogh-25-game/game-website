@@ -107,9 +107,8 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   // واکنش به رویدادهای Socket.IO
-  const socket = io();
   ['announcementCreated','announcementUpdated','announcementDeleted'].forEach(evt => {
-    socket.on(evt, () => {
+    window.socket.on(evt, () => {
       // فقط در صورت فعال بودن بخش اطلاعیه‌ها
       if (document.querySelector('.content-section.active')?.id === 'announcements') {
         loadAnnouncements();

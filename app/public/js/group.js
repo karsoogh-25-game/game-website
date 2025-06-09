@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // group logic
   const groupArea = document.getElementById('group-area');
-  const socket = io(); // سوکت را یکبار در اینجا تعریف می‌کنیم
   let currentGroupId = null; // برای نگهداری شناسه گروه فعلی جهت مدیریت اتاق سوکت
 
   async function loadMyGroup(){
@@ -20,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function(){
     setLoadingState(true);  // فعال کردن اسپینر
 
     if (currentGroupId) {
-      socket.emit('leaveGroupRoom', currentGroupId);
+      window.socket.emit('leaveGroupRoom', currentGroupId);
       currentGroupId = null;
     }
 
@@ -29,8 +28,9 @@ document.addEventListener('DOMContentLoaded', function(){
       // r.data.member: آیا عضو گروه است؟
       // r.data.role: 'user' | 'leader' | 'mentor'
       if (!r.data.member) {
+        // FIX: Handle mentor role explicitly to prevent errors
         if (r.data.role === 'mentor') {
-          renderMentorBank();
+          renderMentorBank(); // A function to render mentor-specific view
         } else {
           renderNotMember();
         }
@@ -42,15 +42,13 @@ document.addEventListener('DOMContentLoaded', function(){
         renderGroupDashboard(g, r.data.role);
 
         if (g.id) {
-          socket.emit('joinGroupRoom', g.id);
+          window.socket.emit('joinGroupRoom', g.id);
           currentGroupId = g.id;
         }
       }
 
-      // START of EDIT: بهینه‌سازی واکشی اطلاعیه‌ها
       // اعلان‌ها (بهینه شده)
       try {
-        // به جای واکشی همه، فقط آخرین اطلاعیه را می‌گیریم
         const resA = await axios.get('/api/announcements/latest');
         if (resA.data && resA.data.title) {
           cardAnnouncements.textContent = resA.data.title;
@@ -61,11 +59,10 @@ document.addEventListener('DOMContentLoaded', function(){
         console.error('خطا در واکشی آخرین اعلان‌', e);
         cardAnnouncements.textContent = '—';
       }
-      // END of EDIT
 
     } catch(err){
-      console.error(err);
-      groupArea.innerHTML = `<p class="error text-center">خطا در بارگذاری وضعیت گروه: ${err.response?.data?.message||err.message}</p>`;
+      console.error('Error loading group status:', err); // Improved error logging
+      groupArea.innerHTML = `<p class="error text-center">خطا در بارگذاری وضعیت گروه: ${err.response?.data?.message || err.message}</p>`;
       sendNotification('error', 'خطا در بارگذاری وضعیت گروه');
     } finally {
       setLoadingState(false);  // غیرفعال کردن اسپینر
@@ -213,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   }
 
-  // منطق انتقال امتیاز (اکنون استفاده نمی‌شود)
+  // منطق انتقال امتیاز
   async function doTransfer(){
     const code = document.getElementById('bank-target-code').value;
     const amount = document.getElementById('bank-amount').value;
@@ -231,24 +228,19 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   }
 
-  // فرم انتقال برای منتور (استفاده نمی‌شود)
+  // فرم انتقال برای منتور
   function renderMentorBank(){
     groupArea.innerHTML = `
       <div class="bg-gray-700 rounded-lg p-6 text-center max-w-md mx-auto">
-        <p class="text-gray-300 mb-4">انتقال امتیاز (منتور)</p>
-        <input id="bank-target-code" class="input-field w-full mb-2" placeholder="کد ۴ رقمی کیف پول گروه" maxlength="4"/>
-        <input id="bank-amount" type="number" min="1" class="input-field w-full mb-2" placeholder="مبلغ انتقال"/>
-        <button id="btn-bank-transfer" class="btn-primary w-full py-2">انتقال</button>
-        <p id="bank-error" class="error mt-2"></p>
-      </div>`;
-    document.getElementById('btn-bank-transfer').onclick = doTransfer;
+        <p class="text-gray-300 mb-4">شما به عنوان منتور وارد شده‌اید و عضو گروهی نیستید.</p>
+        </div>`;
   }
 
   // real-time via socket.io
-  socket.on('memberJoined', loadMyGroup);
-  socket.on('memberRemoved', loadMyGroup);
-  socket.on('groupDeleted', renderNotMember);
-  socket.on('bankUpdate', loadMyGroup);
+  window.socket.on('memberJoined', loadMyGroup);
+  window.socket.on('memberRemoved', loadMyGroup);
+  window.socket.on('groupDeleted', renderNotMember);
+  window.socket.on('bankUpdate', loadMyGroup);
 
   // Notifications button handler
   document.getElementById('btn-notifications').addEventListener('click', e=>{
@@ -269,7 +261,9 @@ document.addEventListener('DOMContentLoaded', function(){
       else loadMyGroup();
     }
   });
-  btnRefresh.click();
+  
+  // Initial load
+  loadMyGroup();
 
   // load group on tab click
   const menuItems = Array.from(document.querySelectorAll('.menu-item'));

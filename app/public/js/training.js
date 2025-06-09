@@ -3,7 +3,6 @@
 document.addEventListener('DOMContentLoaded', function() {
   const container  = document.getElementById('training-list');
   const btnRefresh = document.getElementById('btn-refresh');
-  const socket     = io();
 
   async function loadTraining() {
     setLoadingState(true);
@@ -140,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // real-time با Socket.IO
   ['contentCreated','contentUpdated','contentDeleted']
-    .forEach(evt => socket.on(evt, () => {
+    .forEach(evt => window.socket.on(evt, () => {
       if (document.querySelector('.content-section.active')?.id === 'training') {
         loadTraining();
       }

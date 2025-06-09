@@ -1,12 +1,12 @@
 // app.js
 
-// با این دستور، متغیرهای تعریف شده در فایل .env یا secret های داکر
-// در process.env در دسترس قرار می‌گیرند
 require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
 const http = require('http');
+const { createClient } = require('redis'); // ایمپورت کردن کلاینت Redis
+const { createAdapter } = require('@socket.io/redis-adapter'); // ایمپورت کردن آداپتور
 const socketIO = require('socket.io');
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
@@ -14,22 +14,53 @@ const { sequelize, Admin } = require('./models');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+
+// تعریف Session Middleware
+const sessionMiddleware = session({
+  secret: process.env.SESSION_SECRET || 'a-default-fallback-secret-for-development',
+  store: new SequelizeStore({ db: sequelize }),
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 24 * 60 * 60 * 1000 }
+});
+
+// ساخت سرور Socket.IO
+const io = socketIO(server, {
+  cors: {
+    origin: true,
+    credentials: true
+  }
+});
+
+// به اشتراک‌گذاری Session Middleware با Express و Socket.IO
+app.use(sessionMiddleware);
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
+});
+
+// ======================= REDIS ADAPTER SETUP =======================
+// این تابع آداپتور را به Socket.IO متصل می‌کند
+async function setupRedisAdapter() {
+  const pubClient = createClient({ url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}` });
+  const subClient = pubClient.duplicate();
+
+  // منتظر اتصال هر دو کلاینت به ردیس می‌مانیم
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+
+  // آداپتور را به نمونه اصلی io متصل می‌کنیم
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log('Socket.IO Redis adapter connected successfully.');
+}
+
+// اجرای تابع برای فعال‌سازی آداپتور و مدیریت خطا
+setupRedisAdapter().catch(err => {
+  console.error('FATAL: Failed to connect Redis adapter:', err);
+  process.exit(1); // در صورت عدم اتصال، برنامه را متوقف می‌کنیم
+});
+// ===================== END REDIS ADAPTER SETUP =====================
 
 // ———— make io available in controllers ————
 app.set('io', io);
-
-// ————— Session setup —————
-const sessionStore = new SequelizeStore({ db: sequelize });
-app.use(session({
-  // اگر متغیر محیطی تعریف نشده بود، از یک مقدار پیش‌فرض امن استفاده کن
-  secret: process.env.SESSION_SECRET || 'a-default-fallback-secret-for-development',
-  store: sessionStore,
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 }  // 1 day
-}));
-sessionStore.sync();
 
 // ————— View engine & static files —————
 app.set('view engine', 'ejs');
@@ -51,39 +82,25 @@ function isUser(req, res, next) {
 }
 
 // ————— Routes —————
-
-// 1. Auth & login page
 app.get('/', (req, res) => res.render('auth'));
 app.use('/', require('./routes/auth'));
 
-// 2. Admin panel (pages & API)
 const adminRouter = require('./routes/admin')(io);
 app.use('/admin', isAdmin, adminRouter);
 
-// 3. Announcements router (public & admin)
 const announcementsRouter = require('./routes/announcements')(io);
-// 3a. Public: list announcements
 app.use('/api/announcements', announcementsRouter);
-// 3b. Admin: CRUD announcements
 app.use('/admin/api/announcements', isAdmin, announcementsRouter);
 
-// 4. Admin Groups CRUD API
 const adminGroupsRouter = require('./routes/adminGroups')(io);
 app.use('/admin/api/groups', isAdmin, adminGroupsRouter);
 
-// 5. User panel (dashboard & groups)
 const groupRoutes = require('./routes/group');
 app.use('/api/groups', isUser, groupRoutes);
 app.use('/dashboard', isUser, require('./routes/user'));
 
-// ————— 6. training content (public & admin) —————
-// برای ثبت GET/POST/DELETE های آموزشی، باید تابع را با io فراخوانی کنیم
 const trainingRouter = require('./routes/training')(io);
-
-// 6a. Public API: لیست محتواها
 app.use('/api/training', isUser, trainingRouter);
-
-// 6b. Admin API: ایجاد/آپدیت/حذف محتوا (اینجا می‌توان لاگین ادمین را اجباری کرد)
 app.use('/admin/api/training', isAdmin, trainingRouter);
 
 
@@ -91,21 +108,20 @@ app.use('/admin/api/training', isAdmin, trainingRouter);
 io.on('connection', socket => {
   console.log(`Socket connected: ${socket.id}`);
 
-  // رویداد برای پیوستن ادمین‌ها به اتاق خودشان
   socket.on('joinAdminRoom', () => {
-    socket.join('admins');
-    console.log(`Socket ${socket.id} joined room: admins`);
+    if (socket.request.session.adminId) {
+      socket.join('admins');
+      console.log(`Socket ${socket.id} joined room: admins`);
+    }
   });
 
-  // رویداد برای پیوستن کاربران به اتاق گروهشان
   socket.on('joinGroupRoom', (groupId) => {
-    if (groupId) {
+    if (socket.request.session.userId && groupId) {
       socket.join(`group-${groupId}`);
       console.log(`Socket ${socket.id} joined room: group-${groupId}`);
     }
   });
   
-  // رویداد برای خروج از اتاق گروه
   socket.on('leaveGroupRoom', (groupId) => {
     if (groupId) {
       socket.leave(`group-${groupId}`);
@@ -118,7 +134,7 @@ io.on('connection', socket => {
   });
 });
 
-// ————— Seed default admin & start server —————
+// ————— Seed & Start —————
 async function seedAdmin() {
   const exists = await Admin.findOne({ where: { phoneNumber: '09912807001' } });
   if (!exists) {
@@ -126,14 +142,11 @@ async function seedAdmin() {
   }
 }
 
-// صبر می‌کنیم تا اتصال به دیتابیس و همگام‌سازی جداول با موفقیت انجام شود
-// و سپس سرور را اجرا می‌کنیم
 sequelize.sync().then(async () => {
   console.log('Database synced successfully.');
   await seedAdmin();
   const port = process.env.PORT || 3000;
   server.listen(port, () => console.log(`Server is listening on port ${port}`));
 }).catch(err => {
-    // اگر اتصال به دیتابیس با خطا مواجه شد، آن را در لاگ نمایش بده
     console.error('Failed to sync database:', err);
 });

@@ -99,8 +99,9 @@ exports.getMyGroup = async (req, res) => {
     });
 
     // محاسبه رتبه بهینه شده با کوئری مستقیم
+    // FIX: 'rank' is a reserved keyword in MySQL 8. It must be quoted.
     const rankResult = await sequelize.query(
-        'SELECT COUNT(*) + 1 AS rank FROM (SELECT DISTINCT score FROM `Groups`) AS distinct_scores WHERE score > :currentScore',
+        'SELECT COUNT(*) + 1 AS `rank` FROM (SELECT DISTINCT score FROM `Groups`) AS distinct_scores WHERE score > :currentScore',
         {
           replacements: { currentScore: group.score },
           type: sequelize.QueryTypes.SELECT

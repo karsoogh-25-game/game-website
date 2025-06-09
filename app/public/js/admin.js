@@ -1,6 +1,6 @@
 // public/js/admin.js
 
-const socket = io();
+// const socket = io(); // این خط حذف شده و از window.socket استفاده می‌شود
 
 new Vue({
   el: '#adminApp',
@@ -47,31 +47,31 @@ new Vue({
   },
   created() {
     // لیسنرهای Socket.IO برای اطلاعیه‌ها
-    socket.on('announcementCreated', ann => {
+    window.socket.on('announcementCreated', ann => {
       this.announcements.unshift(ann);
     });
-    socket.on('announcementUpdated', ann => {
+    window.socket.on('announcementUpdated', ann => {
       const idx = this.announcements.findIndex(a => a.id === ann.id);
       if (idx !== -1) this.$set(this.announcements, idx, ann);
     });
-    socket.on('announcementDeleted', ({ id }) => {
+    window.socket.on('announcementDeleted', ({ id }) => {
       this.announcements = this.announcements.filter(a => a.id !== id);
     });
 
     // لیسنرهای Socket.IO برای گروه‌ها
-    socket.on('groupCreated', grp => {
+    window.socket.on('groupCreated', grp => {
       this.groups.unshift(grp);
     });
-    socket.on('groupUpdated', grp => {
+    window.socket.on('groupUpdated', grp => {
       const idx = this.groups.findIndex(g => g.id === grp.id);
       if (idx !== -1) this.$set(this.groups, idx, grp);
     });
-    socket.on('groupDeleted', ({ id }) => {
+    window.socket.on('groupDeleted', ({ id }) => {
       this.groups = this.groups.filter(g => g.id !== id);
     });
     
     // لیسنرهای Socket.IO برای کاربران
-    socket.on('userUpdated', updatedUser => {
+    window.socket.on('userUpdated', updatedUser => {
         const userIndex = this.users.findIndex(u => u.id === updatedUser.id);
         if (userIndex !== -1) {
             this.$set(this.users, userIndex, updatedUser);
@@ -81,22 +81,22 @@ new Vue({
             this.$set(this.mentors, mentorIndex, updatedUser);
         }
     });
-    socket.on('userDeleted', ({ id }) => {
+    window.socket.on('userDeleted', ({ id }) => {
         this.users = this.users.filter(u => u.id !== id);
         this.mentors = this.mentors.filter(m => m.id !== id);
     });
 
     // لیسنرهای محتوا
-    socket.on('contentCreated',  c => this.fetchTraining());
-    socket.on('contentUpdated',  c => this.fetchTraining());
-    socket.on('contentDeleted', ({id}) => this.fetchTraining());
+    window.socket.on('contentCreated',  c => this.fetchTraining());
+    window.socket.on('contentUpdated',  c => this.fetchTraining());
+    window.socket.on('contentDeleted', ({id}) => this.fetchTraining());
 
     // بارگذاری بخش فعال
     this.loadSection();
   },
   mounted() {
     // START of EDIT: به محض بارگذاری پنل، به اتاق ادمین‌ها ملحق شو
-    socket.emit('joinAdminRoom');
+    window.socket.emit('joinAdminRoom');
     // END of EDIT
     
     document.getElementById('refresh-btn').addEventListener('click', this.refreshData);
