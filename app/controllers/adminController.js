@@ -24,8 +24,9 @@ exports.listUsers = async (req, res) => {
 // به‌روزرسانی کاربر + انتشار real-time
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
-  // اضافه کردن 'role' به فیلدهای قابل به‌روزرسانی
-  const fields = ['firstName', 'lastName', 'phoneNumber', 'nationalId', 'email', 'isActive', 'role'];
+  // START of EDIT: اضافه کردن 'gender' به لیست فیلدهای قابل ویرایش
+  const fields = ['firstName', 'lastName', 'phoneNumber', 'nationalId', 'email', 'isActive', 'role', 'gender'];
+  // END of EDIT
   const data = {};
   
   // بررسی و اضافه کردن فیلدها به داده‌های ارسالی
@@ -40,9 +41,8 @@ exports.updateUser = async (req, res) => {
   // به‌روزرسانی کاربر
   await user.update(data);
 
-  // START of EDIT: ارسال تغییرات فقط به اتاق ادمین‌ها
+  // ارسال تغییرات فقط به اتاق ادمین‌ها
   req.io.to('admins').emit('userUpdated', user);
-  // END of EDIT
 
   // پاسخ به کلاینت
   res.json(user);
@@ -55,9 +55,8 @@ exports.deleteUser = async (req, res) => {
   if (!user) return res.status(404).json({ message: 'کاربر پیدا نشد' });
   await user.destroy();
   
-  // START of EDIT: ارسال تغییرات فقط به اتاق ادمین‌ها
+  // ارسال تغییرات فقط به اتاق ادمین‌ها
   req.io.to('admins').emit('userDeleted', { id: user.id });
-  // END of EDIT
 
   res.json({ message: 'کاربر حذف شد' });
 };

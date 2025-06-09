@@ -13,6 +13,9 @@ exports.createGroup = async (req, res) => {
     const group = await Group.create({ name, leaderId:userId }, { transaction:t });
     await GroupMember.create({ groupId:group.id, userId, role:'leader' }, { transaction:t });
     await t.commit();
+    // ارسال رویداد برای آپدیت جدول امتیازات
+    const io = req.app.get('io');
+    io.emit('leaderboardUpdate');
     res.json({ success:true, group });
   } catch(err) {
     await t.rollback();
@@ -48,6 +51,7 @@ exports.addMember = async (req, res) => {
 exports.leaveGroup = async (req, res) => {
   const userId = req.session.userId;
   const { groupId } = req.body;
+  const io = req.app.get('io'); // گرفتن io
   const t = await sequelize.transaction();
   try {
     await GroupMember.destroy({ where:{ groupId, userId } }, { transaction:t });
@@ -60,6 +64,7 @@ exports.leaveGroup = async (req, res) => {
         await GroupMember.update({ role:'leader' }, { where:{ groupId, userId:nxt.userId }, transaction:t });
       } else {
         await group.destroy({ transaction:t });
+        io.emit('leaderboardUpdate'); // ارسال رویداد
       }
     }
     await t.commit();
@@ -99,7 +104,6 @@ exports.getMyGroup = async (req, res) => {
     });
 
     // محاسبه رتبه بهینه شده با کوئری مستقیم
-    // FIX: 'rank' is a reserved keyword in MySQL 8. It must be quoted.
     const rankResult = await sequelize.query(
         'SELECT COUNT(*) + 1 AS `rank` FROM (SELECT DISTINCT score FROM `Groups`) AS distinct_scores WHERE score > :currentScore',
         {
@@ -118,7 +122,7 @@ exports.getMyGroup = async (req, res) => {
         code: group.code,
         walletCode: group.walletCode,
         score: group.score,
-        rank, // استفاده از رتبه محاسبه شده بهینه
+        rank,
         members: members.map(u => ({ id:u.id, name:`${u.firstName} ${u.lastName}`, role:u.GroupMember.role }))
       }
     });
@@ -131,19 +135,33 @@ exports.getMyGroup = async (req, res) => {
 exports.getRanking = async (req, res) => {
   try {
     const groups = await Group.findAll({
-      order:[['score','DESC']],
-      include:[{ model: User, as:'leader', attributes:['firstName','lastName'] }]
+      order: [
+        ['score', 'DESC'], // اول بر اساس امتیاز
+        ['name', 'ASC']    // دوم بر اساس نام برای امتیازهای برابر
+      ],
+      include: [{
+        model: User,
+        as: 'leader',
+        attributes: ['firstName', 'lastName', 'gender'] // **مهم: اضافه کردن فیلد جنسیت**
+      }]
     });
-    const distinctScores = [...new Set(groups.map(g => g.score))];
+
+    // این روش رتبه‌بندی صحیح را تضمین می‌کند
+    const distinctScores = [...new Set(groups.map(g => g.score))].sort((a, b) => b - a);
+
     const result = groups.map(g => ({
       id: g.id,
       name: g.name,
       score: g.score,
+      // منطق رتبه‌بندی یکسان برای امتیازهای برابر
       rank: distinctScores.indexOf(g.score) + 1,
-      leader: `${g.leader.firstName} ${g.leader.lastName}`
+      leaderName: g.leader ? `${g.leader.firstName} ${g.leader.lastName}` : 'نامشخص',
+      // **مهم: ارسال جنسیت سرگروه برای رنگ‌بندی**
+      leaderGender: g.leader ? g.leader.gender : null
     }));
+
     res.json(result);
-  } catch(err) {
+  } catch (err) {
     console.error('getRanking error:', err);
     res.status(500).json({ message:'خطای سرور در بارگذاری رتبه‌بندی' });
   }
@@ -167,6 +185,7 @@ exports.removeMember = async (req, res) => {
 
 exports.deleteGroup = async (req, res) => {
   const leaderId = req.session.userId;
+  const io = req.app.get('io'); // گرفتن io
   try {
     const group = await Group.findByPk(req.params.id);
     if (group.leaderId !== leaderId) {
@@ -174,6 +193,8 @@ exports.deleteGroup = async (req, res) => {
     }
     await GroupMember.destroy({ where:{ groupId:group.id }});
     await group.destroy();
+
+    io.emit('leaderboardUpdate'); // ارسال رویداد
     res.json({ success:true });
   } catch(err) {
     console.error('deleteGroup error:', err);
@@ -181,9 +202,6 @@ exports.deleteGroup = async (req, res) => {
   }
 };
 
-/**
- * متد انتقال امتیاز توسط منتور (اصلاح شده با تراکنش)
- */
 exports.mentorTransfer = async (req, res) => {
   const io = req.app.get('io');
   const { targetCode, amount, confirmed } = req.body;
@@ -193,10 +211,8 @@ exports.mentorTransfer = async (req, res) => {
     return res.status(400).json({ success: false, message: 'کد و مبلغ معتبر لازم است' });
   }
 
-  // شروع تراکنش
   const t = await sequelize.transaction();
   try {
-    // پیدا کردن گروه مقصد و قفل کردن رکورد
     const target = await Group.findOne({
         where: { walletCode: targetCode },
         transaction: t,
@@ -208,9 +224,7 @@ exports.mentorTransfer = async (req, res) => {
       return res.status(404).json({ success: false, message: 'گروه مقصد یافت نشد' });
     }
 
-    // مرحلهٔ اول: اگر هنوز تایید نشده، اطلاعات برای تایید بفرست
     if (!confirmed) {
-        // برای این مرحله نیازی به نگه داشتن تراکنش نیست
         await t.rollback();
         return res.json({
             success: false,
@@ -220,14 +234,12 @@ exports.mentorTransfer = async (req, res) => {
         });
     }
 
-    // افزایش امتیاز گروه مقصد
     target.score += amt;
     await target.save({ transaction: t });
-    
-    // کامیت کردن تراکنش
     await t.commit();
 
-    // ارسال پیام آپدیت فقط به گروه مقصد
+    // ارسال آپدیت لحظه‌ای
+    io.emit('leaderboardUpdate'); // **مهم: آپدیت جدول امتیازات**
     io.to(`group-${target.id}`).emit('bankUpdate', { score: target.score });
 
     return res.json({ success: true, message: 'انتقال با موفقیت انجام شد' });
@@ -238,11 +250,7 @@ exports.mentorTransfer = async (req, res) => {
   }
 };
 
-/**
- * متد انتقال امتیاز (اصلاح شده با تراکنش برای رفع Race Condition)
- */
 exports.transfer = async (req, res) => {
-  // اگر کاربر منتور بود، آن را به تابع مربوطه پاس بده
   const me = await User.findByPk(req.session.userId);
   if (me.role === 'mentor') {
     return exports.mentorTransfer(req, res);
@@ -257,11 +265,9 @@ exports.transfer = async (req, res) => {
     return res.status(400).json({ success: false, message: 'کد و مبلغ معتبر لازم است' });
   }
 
-  // شروع تراکنش
   const t = await sequelize.transaction();
 
   try {
-    // واکشی گروه مبدا (با قفل کردن رکورد برای جلوگیری از خواندن توسط تراکنش‌های دیگر)
     const membership = await GroupMember.findOne({ where: { userId }, transaction: t });
     if (!membership || membership.role !== 'leader') {
       await t.rollback();
@@ -270,14 +276,13 @@ exports.transfer = async (req, res) => {
 
     const fromGroup = await Group.findByPk(membership.groupId, {
       transaction: t,
-      lock: t.LOCK.UPDATE // رکورد را تا پایان تراکنش قفل کن
+      lock: t.LOCK.UPDATE
     });
 
-    // پیدا کردن گروه مقصد
     const targetGroup = await Group.findOne({
       where: { walletCode: targetCode },
       transaction: t,
-      lock: t.LOCK.UPDATE // این رکورد را هم قفل کن
+      lock: t.LOCK.UPDATE
     });
 
     if (!targetGroup) {
@@ -290,31 +295,27 @@ exports.transfer = async (req, res) => {
         return res.status(400).json({ success: false, message: 'شما نمی‌توانید به گروه خودتان انتقال دهید' });
     }
       
-    // حالا بررسی موجودی را داخل تراکنش انجام بده
     if (fromGroup.score < amt) {
       await t.rollback();
       return res.status(400).json({ success: false, message: 'موجودی کافی نیست' });
     }
 
-    // کسر امتیاز
     fromGroup.score -= amt;
     await fromGroup.save({ transaction: t });
 
-    // افزایش امتیاز
     targetGroup.score += amt;
     await targetGroup.save({ transaction: t });
 
-    // اگر همه چیز موفق بود، تراکنش را commit کن
     await t.commit();
 
-    // حالا آپدیت‌ها را به کلاینت‌ها بفرست
+    // ارسال آپدیت لحظه‌ای
+    io.emit('leaderboardUpdate'); // **مهم: آپدیت جدول امتیازات**
     io.to(`group-${fromGroup.id}`).emit('bankUpdate', { score: fromGroup.score });
     io.to(`group-${targetGroup.id}`).emit('bankUpdate', { score: targetGroup.score });
 
     return res.json({ success: true, message: 'انتقال با موفقیت انجام شد' });
 
   } catch (err) {
-    // در صورت بروز هرگونه خطا، تغییرات را به حالت اول برگردان
     await t.rollback();
     console.error('transfer error:', err);
     res.status(500).json({ success: false, message: 'خطای سرور در هنگام انتقال' });

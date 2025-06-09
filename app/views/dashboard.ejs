@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>پنل کاربری</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="/css/style.css"><!-- unified auth styles -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/leaderboard.css"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* transition for sections */
     .content-section {
@@ -58,15 +57,12 @@
 </head>
 <body class="bg-pattern font-wazir flex h-screen overflow-hidden">
 
-  <!-- Alert Box Container -->
   <div class="alert-container" id="alert-container"></div>
 
-  <!-- Loading Spinner -->
   <div id="loading-spinner" class="hidden absolute inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
     <div class="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
   </div>
 
-  <!-- Sidebar -->
   <aside class="hidden md:flex flex-col w-64 bg-gray-900 border-l border-gray-800">
     <div class="h-16 flex items-center justify-center bg-gray-800">
       <i class="fas fa-chalkboard-teacher text-blue-400 text-2xl ml-2"></i>
@@ -75,17 +71,17 @@
     <nav class="flex-grow overflow-y-auto">
       <ul class="mt-4">
         <% const sections = [
-             { id:'dashboard', label:'داشبورد', icon:'tachometer-alt' },
-             { id:'training',  label:'محتوای آموزشی', icon:'book' },
-             { id:'groups',    label:'گروه‌بندی', icon:'users' },
-             { id:'bank',      label:'بانک', icon:'university' },
-             { id:'store',     label:'فروشگاه', icon:'store' },
-             { id:'scoreboard',label:'جدول امتیازات', icon:'list-ol' },
-             { id:'announcements',label:'اطلاعیه‌ها', icon:'bullhorn' },
-           ];
+              { id:'dashboard', label:'داشبورد', icon:'tachometer-alt' },
+              { id:'training',  label:'محتوای آموزشی', icon:'book' },
+              { id:'groups',    label:'گروه‌بندی', icon:'users' },
+              { id:'bank',      label:'بانک', icon:'university' },
+              { id:'store',     label:'فروشگاه', icon:'store' },
+              { id:'scoreboard',label:'جدول امتیازات', icon:'list-ol' },
+              { id:'announcements',label:'اطلاعیه‌ها', icon:'bullhorn' },
+            ];
         %>
         <% sections.forEach(s => {
-             if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
+              if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
         %>
           <li>
             <a href="#" class="menu-item flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
@@ -98,7 +94,6 @@
     </nav>
   </aside>
 
-  <!-- Mobile Sidebar -->
   <aside id="mobile-menu" class="fixed inset-y-0 right-0 w-64 bg-gray-900 border-l border-gray-800 transform translate-x-full transition-transform duration-300 ease-in-out md:hidden" style="z-index:10">
     <div class="h-16 flex items-center justify-between bg-gray-900 pr-4">
       <div class="flex items-center">
@@ -110,7 +105,7 @@
     <nav class="py-4 overflow-y-auto">
       <ul>
         <% sections.forEach(s => {
-             if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
+              if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
         %>
           <li>
             <a href="#" class="menu-item block px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
@@ -123,25 +118,19 @@
     </nav>
   </aside>
 
-  <!-- Main content -->
   <div class="flex-1 flex flex-col overflow-hidden">
-    <!-- Header -->
-    <header class="flex items-center justify-between h-16 bg-gray-800 border-b border-gray-700">
+    <header class="flex items-center justify-between h-16 bg-gray-800 border-b border-gray-700 px-4">
       <div class="flex items-center">
         <button id="open-mobile-menu" class="text-gray-400 hover:text-white md:hidden mr-4"><i class="fas fa-bars text-xl"></i></button>
         <h1 id="page-title" class="text-white text-xl font-bold">داشبورد</h1>
       </div>
-      <div class="flex items-center">
-        <!-- Refresh button -->
-        <button id="btn-refresh" class="text-gray-400 hover:text-white"><i class="fas fa-refresh text-xl"></i></button>
-        <!-- Notifications button -->
-        <button id="btn-notifications" class="relative text-gray-400 hover:text-white"><i class="fas fa-bell text-xl"></i><span class="absolute top-2 left-5 w-2 h-2 bg-red-500 rounded-full"></span></button>
-        <!-- Logout button -->
-        <button onclick="location.href='/logout'" class="text-gray-400 hover:text-white"><i class="fas fa-sign-out-alt text-xl"></i></button>
+      <div class="flex items-center space-x-4">
+        <button id="btn-refresh" class="text-gray-400 hover:text-white"><i class="fas fa-sync-alt text-xl"></i></button>
+        <button id="btn-notifications" class="relative text-gray-400 hover:text-white"><i class="fas fa-bell text-xl"></i><span class="hidden absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span></button>
+        <a href='/logout' class="text-gray-400 hover:text-white"><i class="fas fa-sign-out-alt text-xl"></i></a>
       </div>
     </header>
 
-    <!-- Sections -->
     <main class="flex-1 overflow-auto p-4 md:p-8">
       <section id="dashboard" class="content-section active">
         <div class="mb-8 text-center">
@@ -149,75 +138,47 @@
           <p class="text-gray-300 text-lg">💡 آیا می‌دانستی؟ <strong><%= fact %></strong></p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <!-- کارت امتیاز -->
-          <div class="bg-gray-700 rounded-lg p-6 text-center">
-            <p class="text-gray-400 text-sm">امتیاز شما</p>
-            <p id="card-score" class="text-white text-2xl font-bold">—</p>
-          </div>
-  
-          <!-- کارت گروه -->
-          <div class="bg-gray-700 rounded-lg p-6 text-center">
-            <p class="text-gray-400 text-sm">گروه شما</p>
-            <p id="card-group" class="text-white text-2xl font-bold">—</p>
-          </div>
-  
-          <!-- **کارت رتبه** -->
-          <div class="bg-gray-700 rounded-lg p-6 text-center">
-            <p class="text-gray-400 text-sm">رتبه شما</p>
-            <p id="card-rank" class="text-white text-2xl font-bold">—</p>
-          </div>
-  
-          <!-- کارت اعلان‌ها (حالا عنوان آخرین اطلاعیه را نمایش می‌دهد) -->
-          <div class="bg-gray-700 rounded-lg p-6 text-center">
-            <p class="text-gray-400 text-sm">آخرین اطلاعیه</p>
-            <p id="card-announcements" class="text-white text-2xl font-bold">—</p>
-          </div>
+          <div class="bg-gray-700 rounded-lg p-6 text-center"><p class="text-gray-400 text-sm">امتیاز گروه</p><p id="card-score" class="text-white text-2xl font-bold">—</p></div>
+          <div class="bg-gray-700 rounded-lg p-6 text-center"><p class="text-gray-400 text-sm">گروه شما</p><p id="card-group" class="text-white text-2xl font-bold">—</p></div>
+          <div class="bg-gray-700 rounded-lg p-6 text-center"><p class="text-gray-400 text-sm">رتبه شما</p><p id="card-rank" class="text-white text-2xl font-bold">—</p></div>
+          <div class="bg-gray-700 rounded-lg p-6 text-center"><p class="text-gray-400 text-sm">آخرین اطلاعیه</p><p id="card-announcements" class="text-white text-2xl font-bold">—</p></div>
         </div>  
       </section>
 
-      <!-- Groups Section -->
       <section id="groups" class="content-section hidden">
         <h2 class="text-xl font-bold text-white mb-6 text-center">گروه‌بندی</h2>
         <div id="group-area" class="max-w-2xl mx-auto space-y-6"></div>
       </section>
 
-      <!-- بخش بانک -->
       <section id="bank" class="content-section hidden">
-        <h2 class="text-xl font-bold text-white mb-4">بانک</h2>
-
-        <!-- wrapper div to separate from background -->
-        <div class="bg-gray-700 rounded-lg p-6 max-w-2xl mx-auto space-y-6">
-          <!-- spinner + loading text -->
-          <div id="bank-spinner" class="loader mx-auto my-4"></div>
-          <p id="bank-loading-text" class="text-gray-400 text-center">در حال بارگذاری بانک …</p>
-
-          <!-- this is where bank.js will render bank content -->
+        <h2 class="text-xl font-bold text-white mb-4 text-center">بانک</h2>
+        <div class="bg-gray-700 rounded-lg p-6 max-w-md mx-auto space-y-4">
           <div id="bank-area"></div>
         </div>
       </section>
+      
+      <section id="store" class="content-section hidden">
+        <h2 class="text-xl font-bold text-white mb-4"><%= sections.find(s => s.id==='store').label %></h2>
+        <p class="text-gray-500 text-center py-8">این بخش به زودی فعال خواهد شد...</p>
+      </section>
 
-      <!-- Other Sections -->
-      <% ['store','scoreboard'].forEach(id => { %>
-        <section id="<%= id %>" class="content-section hidden">
-          <h2 class="text-xl font-bold text-white mb-4"><%= sections.find(s => s.id===id).label %></h2>
-          <p class="text-gray-500">فعلاً خالی …</p>
-        </section>
-      <% }) %>
-
-      <!-- بخش اعلان‌ها -->
+      <section id="scoreboard" class="content-section hidden">
+        <h2 class="text-2xl font-bold text-white mb-6 text-center">جدول امتیازات</h2>
+        <div id="scoreboard-content" class="max-w-4xl mx-auto">
+          </div>
+      </section>
+      
       <section id="announcements" class="content-section hidden">
         <h2 class="text-xl font-bold text-white mb-4">اطلاعیه‌ها</h2>
-        <!-- این دیو محل ریختن لیست اعلان‌ها توسط JS است -->
         <div id="announcements-list" class="space-y-4 text-gray-300">
-        <p class="text-gray-400">در حال بارگذاری اطلاعیه‌ها…</p>
+          <p class="text-gray-400 text-center py-6">در حال بارگذاری اطلاعیه‌ها…</p>
         </div>
       </section>
 
       <section id="training" class="content-section hidden">
         <h2 class="text-xl font-bold text-white mb-4"><%= sections.find(s => s.id==='training').label %></h2>
-        <!-- این دیو محل ریختن لیست محتواها توسط JS است -->
         <div id="training-list" class="space-y-4 text-gray-300">
-          <p class="text-gray-400">در حال بارگذاری محتواها…</p>
+          <p class="text-gray-400 text-center py-6">در حال بارگذاری محتواها…</p>
         </div>
       </section>
         
@@ -227,13 +188,13 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/socket-manager.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="js/sidebar.js"></script>
-  <script src="js/tabs.js"></script>
-  <script src="js/group.js"></script>
-  <script src="js/announcements.js"></script>
-  <script src="js/helpers.js"></script>
-  <script src="js/alert.js"></script>
-  <script src="js/training.js"></script>
-  <script src="js/bank.js"></script>
-</body>
+  <script src="/js/helpers.js"></script>
+  <script src="/js/alert.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script src="/js/tabs.js"></script>
+  <script src="/js/group.js"></script>
+  <script src="/js/announcements.js"></script>
+  <script src="/js/training.js"></script>
+  <script src="/js/bank.js"></script>
+  <script src="/js/leaderboard.js"></script> </body>
 </html>

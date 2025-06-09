@@ -1,0 +1,24 @@
+/* public/css/leaderboard.css */
+
+/* طیف رنگ صورتی پاستلی (اصلاح شده برای دید بهتر روی تم تیره) */
+.bg-pastel-pink {
+  background-color: rgba(197, 29, 93, 0.25) !important; /* رنگ صورتی/شرابی با شفافیت */
+}
+.bg-pastel-pink:hover {
+  background-color: rgba(197, 29, 93, 0.4) !important; /* هاور پررنگ‌تر */
+}
+
+/* طیف رنگ آبی پاستلی (بدون تغییر) */
+.bg-pastel-blue {
+  background-color: rgba(30, 81, 123, 0.3);
+}
+.bg-pastel-blue:hover {
+  background-color: rgba(30, 81, 123, 0.5);
+}
+
+/* استایل عمومی برای خوانایی بهتر */
+#scoreboard-content th,
+#scoreboard-content td {
+  transition: background-color 0.3s ease;
+  color: #E2E8F0; /* رنگ متن روشن برای همه ردیف‌ها */
+}
