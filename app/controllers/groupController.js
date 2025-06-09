@@ -182,11 +182,10 @@ exports.deleteGroup = async (req, res) => {
 };
 
 /**
- * متد انتقال امتیاز توسط منتور
+ * متد انتقال امتیاز توسط منتور (اصلاح شده با تراکنش)
  */
 exports.mentorTransfer = async (req, res) => {
   const io = req.app.get('io');
-  const userId = req.session.userId;
   const { targetCode, amount, confirmed } = req.body;
   const amt = parseInt(amount, 10);
 
@@ -194,33 +193,44 @@ exports.mentorTransfer = async (req, res) => {
     return res.status(400).json({ success: false, message: 'کد و مبلغ معتبر لازم است' });
   }
 
-  // پیدا کردن گروه مقصد
-  const target = await Group.findOne({ where: { walletCode: targetCode } });
-  if (!target) {
-    return res.status(404).json({ success: false, message: 'گروه مقصد یافت نشد' });
-  }
-
-  // مرحلهٔ اول: اگر هنوز تایید نشده، اطلاعات برای تایید بفرست
-  if (!confirmed) {
-    return res.json({
-      success: false,
-      confirm: true,
-      groupName: target.name,
-      amount: amt
-    });
-  }
-
+  // شروع تراکنش
   const t = await sequelize.transaction();
   try {
+    // پیدا کردن گروه مقصد و قفل کردن رکورد
+    const target = await Group.findOne({
+        where: { walletCode: targetCode },
+        transaction: t,
+        lock: t.LOCK.UPDATE
+    });
+
+    if (!target) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'گروه مقصد یافت نشد' });
+    }
+
+    // مرحلهٔ اول: اگر هنوز تایید نشده، اطلاعات برای تایید بفرست
+    if (!confirmed) {
+        // برای این مرحله نیازی به نگه داشتن تراکنش نیست
+        await t.rollback();
+        return res.json({
+            success: false,
+            confirm: true,
+            groupName: target.name,
+            amount: amt
+        });
+    }
+
     // افزایش امتیاز گروه مقصد
     target.score += amt;
     await target.save({ transaction: t });
     
-    // ارسال پیام آپدیت فقط به گروه مقصد
-    io.to(`group-${target.id}`).emit('bankUpdate', { code: target.walletCode });
-
+    // کامیت کردن تراکنش
     await t.commit();
-    return res.json({ success: true });
+
+    // ارسال پیام آپدیت فقط به گروه مقصد
+    io.to(`group-${target.id}`).emit('bankUpdate', { score: target.score });
+
+    return res.json({ success: true, message: 'انتقال با موفقیت انجام شد' });
   } catch (err) {
     await t.rollback();
     console.error('mentorTransfer error:', err);
@@ -229,9 +239,10 @@ exports.mentorTransfer = async (req, res) => {
 };
 
 /**
- * متد انتقال امتیاز
+ * متد انتقال امتیاز (اصلاح شده با تراکنش برای رفع Race Condition)
  */
 exports.transfer = async (req, res) => {
+  // اگر کاربر منتور بود، آن را به تابع مربوطه پاس بده
   const me = await User.findByPk(req.session.userId);
   if (me.role === 'mentor') {
     return exports.mentorTransfer(req, res);
@@ -239,56 +250,74 @@ exports.transfer = async (req, res) => {
 
   const io = req.app.get('io');
   const userId = req.session.userId;
-  const { targetCode, amount, confirmed } = req.body;
+  const { targetCode, amount } = req.body;
   const amt = parseInt(amount, 10);
+
   if (!targetCode || !amt || amt <= 0) {
-    return res.status(400).json({ success:false, message:'کد و مبلغ معتبر لازم است' });
+    return res.status(400).json({ success: false, message: 'کد و مبلغ معتبر لازم است' });
   }
 
-  // واکشی کاربر و گروه مبدا
-  let fromGroup = null;
-  const membership = await GroupMember.findOne({ where:{ userId } });
-  if (!membership || membership.role !== 'leader') {
-    return res.status(403).json({ success:false, message:'فقط سرگروه می‌تواند انتقال دهد' });
-  }
-  fromGroup = await Group.findByPk(membership.groupId);
-
-  // پیدا کردن گروه مقصد
-  const target = await Group.findOne({ where:{ walletCode: targetCode }});
-  if (!target) {
-    return res.status(404).json({ success:false, message:'گروه مقصد یافت نشد' });
-  }
-
+  // شروع تراکنش
   const t = await sequelize.transaction();
+
   try {
-    // جلوگیری از انتقال به گروه خود قبل از چک موجودی
-    if (fromGroup.id === target.id) {
+    // واکشی گروه مبدا (با قفل کردن رکورد برای جلوگیری از خواندن توسط تراکنش‌های دیگر)
+    const membership = await GroupMember.findOne({ where: { userId }, transaction: t });
+    if (!membership || membership.role !== 'leader') {
       await t.rollback();
-      return res.status(400).json({ success:false, message:'شما نمی‌توانید به گروه خودتان انتقال دهید' });
+      return res.status(403).json({ success: false, message: 'فقط سرگروه می‌تواند انتقال دهد' });
     }
-    // بررسی موجودی
+
+    const fromGroup = await Group.findByPk(membership.groupId, {
+      transaction: t,
+      lock: t.LOCK.UPDATE // رکورد را تا پایان تراکنش قفل کن
+    });
+
+    // پیدا کردن گروه مقصد
+    const targetGroup = await Group.findOne({
+      where: { walletCode: targetCode },
+      transaction: t,
+      lock: t.LOCK.UPDATE // این رکورد را هم قفل کن
+    });
+
+    if (!targetGroup) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'گروه مقصد یافت نشد' });
+    }
+
+    if (fromGroup.id === targetGroup.id) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'شما نمی‌توانید به گروه خودتان انتقال دهید' });
+    }
+      
+    // حالا بررسی موجودی را داخل تراکنش انجام بده
     if (fromGroup.score < amt) {
       await t.rollback();
-      return res.status(400).json({ success:false, message:'موجودی کافی نیست' });
+      return res.status(400).json({ success: false, message: 'موجودی کافی نیست' });
     }
+
     // کسر امتیاز
     fromGroup.score -= amt;
-    await fromGroup.save({ transaction:t });
-    // ارسال پیام آپدیت فقط به گروه مبدا
-    io.to(`group-${fromGroup.id}`).emit('bankUpdate', { code: fromGroup.walletCode });
+    await fromGroup.save({ transaction: t });
 
-    // افزایش امتیاز گروه مقصد
-    target.score += amt;
-    await target.save({ transaction:t });
-    // ارسال پیام آپدیت فقط به گروه مقصد
-    io.to(`group-${target.id}`).emit('bankUpdate', { code: target.walletCode });
+    // افزایش امتیاز
+    targetGroup.score += amt;
+    await targetGroup.save({ transaction: t });
 
+    // اگر همه چیز موفق بود، تراکنش را commit کن
     await t.commit();
-    return res.json({ success:true });
-  } catch(err) {
+
+    // حالا آپدیت‌ها را به کلاینت‌ها بفرست
+    io.to(`group-${fromGroup.id}`).emit('bankUpdate', { score: fromGroup.score });
+    io.to(`group-${targetGroup.id}`).emit('bankUpdate', { score: targetGroup.score });
+
+    return res.json({ success: true, message: 'انتقال با موفقیت انجام شد' });
+
+  } catch (err) {
+    // در صورت بروز هرگونه خطا، تغییرات را به حالت اول برگردان
     await t.rollback();
     console.error('transfer error:', err);
-    res.status(500).json({ success:false, message:'خطای سرور در انتقال' });
+    res.status(500).json({ success: false, message: 'خطای سرور در هنگام انتقال' });
   }
 };
 

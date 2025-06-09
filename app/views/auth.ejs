@@ -13,7 +13,6 @@
 <body class="bg-pattern min-h-screen flex items-center justify-center p-4">
   <div id="app" class="container mx-auto max-w-4xl flex flex-col lg:flex-row rounded-2xl overflow-hidden shadow-2xl">
     
-    <!-- Illustration side: show only on lg+ -->
     <div class="hidden lg:flex lg:w-2/5 bg-gradient-to-b from-gray-900 to-gray-800 p-8 flex-col items-center justify-center relative overflow-hidden">
       <div class="relative z-10 text-center">
         <div class="floating mb-8">
@@ -35,9 +34,7 @@
       </div>
     </div>
 
-    <!-- Forms side: full width on mobile, 3/5 on lg+ -->
     <div class="w-full lg:w-3/5 bg-gray-800 bg-opacity-70 backdrop-filter backdrop-blur-lg p-8 lg:p-12">
-      <!-- Tabs -->
       <div class="flex mb-8 border-b border-gray-700">
         <button @click="selectMode('login')"
                 :class="mode==='login'? 'text-white border-green-500':'text-gray-400'"
@@ -51,13 +48,11 @@
         </button>
       </div>
 
-      <!-- helper text on initial slide (no box) -->
       <div v-if="slide===0">
         <p class="text-gray-400 mb-6">لطفاً یکی از گزینه‌های «ورود» یا «ثبت‌نام» را انتخاب کنید.</p>
       </div>
 
       <transition name="fade-scale" mode="out-in">
-        <!-- Login Slide -->
         <div v-if="mode==='login' && slide>0" class="slide" key="login">
           <h3 class="text-2xl font-bold text-white mb-4">ورود به حساب</h3>
           
@@ -68,9 +63,7 @@
           <input v-model="password" type="password" class="input-field text-white mb-6" placeholder="••••••">
           
           <div class="btn-group flex justify-between">
-            <!-- Prev on left -->
             <button class="secondary" @click="prev" :disabled="loading">قبلی</button>
-            <!-- Next on right -->
             <button class="primary" @click="login" :disabled="loading">ورود</button>
           </div>
           
@@ -78,7 +71,6 @@
           <p class="error">{{ errorMessage }}</p>
         </div>
 
-        <!-- Register Slides -->
         <div v-if="mode==='register' && slide>0 && slide<5" class="slide" :key="slide">
           <h3 class="text-2xl font-bold text-white mb-4">مرحله {{slide}} از 4</h3>
           
@@ -87,7 +79,14 @@
             <input v-model="firstName" class="input-field text-white mb-4">
             <label class="block text-gray-300 mb-1">نام خانوادگی</label>
             <input v-model="lastName" class="input-field text-white mb-4">
-          </div>
+            
+            <label class="block text-gray-300 mb-1">جنسیت</label>
+            <select v-model="gender" class="input-field w-full text-white text-center mb-4" :class="{ 'error-field': errorField === 'gender' }">
+              <option :value="null" disabled>-- انتخاب کنید --</option>
+              <option value="male">مرد</option>
+              <option value="female">زن</option>
+            </select>
+            </div>
           
           <div v-if="slide===2">
             <label class="block text-gray-300 mb-1">شماره موبایل</label>
@@ -113,9 +112,7 @@
           </div>
           
           <div class="btn-group flex justify-between mt-6">
-            <!-- Prev on left -->
             <button class="secondary" @click="prev" :disabled="loading">قبلی</button>
-            <!-- Next on right -->
             <button class="primary" @click="next" :disabled="loading">{{ slide<4?'بعدی':'ثبت‌نام' }}</button>
           </div>
           
@@ -123,7 +120,6 @@
           <p class="error">{{ errorMessage }}</p>
         </div>
 
-        <!-- Completion Slide -->
         <div v-if="mode==='register' && slide===5" class="slide" key="done">
           <h3 class="text-2xl font-bold text-white mb-4">تبریک! ثبت‌نام با موفقیت انجام شد 🎉</h3>
           <button class="primary" @click="goToLogin">ورود</button>

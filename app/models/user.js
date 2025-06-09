@@ -1,3 +1,5 @@
+// app/models/user.js
+
 const { DataTypes } = require('sequelize');
 const bcrypt        = require('bcryptjs');
 
@@ -15,7 +17,14 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 'user',
       comment: 'نقش کاربر: user یا mentor'
+    },
+    // ---- فیلد جنسیت (اصلاح شده نهایی) ----
+    gender: {
+      type: DataTypes.ENUM('male', 'female'), // فقط این دو مقدار مجاز است
+      allowNull: false, // این فیلد نمی‌تواند خالی باشد
+      comment: 'جنسیت کاربر'
     }
+    // ---- پایان فیلد جدید ----
   }, {
     hooks: {
       beforeCreate: async (user) => {

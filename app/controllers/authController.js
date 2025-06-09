@@ -1,3 +1,5 @@
+// app/controllers/authController.js
+
 require('dotenv').config();
 const { User, Admin } = require('../models');
 const nodemailer       = require('nodemailer');
@@ -14,11 +16,16 @@ const transporter = nodemailer.createTransport({
 
 // مرحله ۱
 exports.registerStep1 = (req, res) => {
-  const { firstName, lastName } = req.body;
+  const { firstName, lastName, gender } = req.body;
   if (!firstName || !lastName) {
     return res.status(400).json({ success: false, message: 'نام و نام‌خانوادگی الزامی است' });
   }
-  req.session.regData = { firstName, lastName };
+  // ---- اعتبارسنجی جدید و اجباری برای جنسیت ----
+  if (!gender || !['male', 'female'].includes(gender)) {
+    return res.status(400).json({ success: false, message: 'انتخاب جنسیت الزامی است' });
+  }
+  // ---- پایان تغییر ----
+  req.session.regData = { firstName, lastName, gender };
   res.json({ success: true });
 };
 

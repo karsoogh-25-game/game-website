@@ -10,7 +10,8 @@ const { createAdapter } = require('@socket.io/redis-adapter'); // ایمپورت
 const socketIO = require('socket.io');
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
-const { sequelize, Admin } = require('./models');
+// مدل‌های Admin و GroupMember برای استفاده در ادامه ایمپورت شده‌اند
+const { sequelize, Admin, GroupMember } = require('./models');
 
 const app = express();
 const server = http.createServer(app);
@@ -104,10 +105,11 @@ app.use('/api/training', isUser, trainingRouter);
 app.use('/admin/api/training', isAdmin, trainingRouter);
 
 
-// ————— Socket.IO Room Management —————
+// ————— Socket.IO Room Management (اصلاح شده برای امنیت بیشتر) —————
 io.on('connection', socket => {
   console.log(`Socket connected: ${socket.id}`);
 
+  // فقط ادمین‌ها می‌توانند به این اتاق ملحق شوند
   socket.on('joinAdminRoom', () => {
     if (socket.request.session.adminId) {
       socket.join('admins');
@@ -115,13 +117,35 @@ io.on('connection', socket => {
     }
   });
 
-  socket.on('joinGroupRoom', (groupId) => {
-    if (socket.request.session.userId && groupId) {
-      socket.join(`group-${groupId}`);
-      console.log(`Socket ${socket.id} joined room: group-${groupId}`);
+  // کاربر برای پیوستن به اتاق گروه، باید عضو آن گروه باشد
+  socket.on('joinGroupRoom', async (groupId) => {
+    const userId = socket.request.session.userId;
+
+    if (userId && groupId) {
+      try {
+        // بررسی می‌کنیم آیا رکوردی برای عضویت این کاربر در این گروه وجود دارد یا خیر
+        const membership = await GroupMember.findOne({
+          where: {
+            userId: userId,
+            groupId: groupId
+          }
+        });
+
+        // فقط در صورتی که کاربر عضو بود، او را به اتاق اضافه کن
+        if (membership) {
+          socket.join(`group-${groupId}`);
+          console.log(`Socket ${socket.id} joined secure room: group-${groupId}`);
+        } else {
+          // اگر کاربر عضو نبود، یک هشدار در لاگ سرور ثبت کن
+          console.warn(`Unauthorized attempt by socket ${socket.id} to join room: group-${groupId}`);
+        }
+      } catch (error) {
+        console.error(`Database error on joinGroupRoom for socket ${socket.id}:`, error);
+      }
     }
   });
   
+  // برای خروج از اتاق، نیازی به اعتبارسنجی نیست
   socket.on('leaveGroupRoom', (groupId) => {
     if (groupId) {
       socket.leave(`group-${groupId}`);

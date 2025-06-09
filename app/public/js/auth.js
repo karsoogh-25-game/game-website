@@ -1,13 +1,18 @@
+// app/public/js/auth.js
+
 new Vue({
   el: '#app',
   data: {
     mode: null,
     slide: 0,
     firstName: '', lastName: '',
+    // ---- مقدار پیش‌فرض gender برای اجباری کردن انتخاب تغییر کرد ----
+    gender: null,
+    // ---- پایان تغییر ----
     phoneNumber: '', nationalId: '', email: '',
     code: '', password: '', password2: '',
     errorMessage: '', errorField: '',
-    loading: false       // ← NEW: برای نمایش spinner و غیرفعال کردن دکمه‌ها
+    loading: false
   },
   computed: {
     validEmail()    { return /^\S+@\S+\.\S+$/.test(this.email); },
@@ -26,7 +31,7 @@ new Vue({
       if (this.slide > 1) {
         this.slide--;
       } else {
-        this.slide = 0;   // بازگشت به انتخاب register/login
+        this.slide = 0;
       }
     },
     async next() {
@@ -38,6 +43,12 @@ new Vue({
         this.error('firstName', 'نام و نام‌خانوادگی الزامی است');
         return;
       }
+      // ---- اعتبارسنجی جدید برای جنسیت ----
+      if (this.slide === 1 && !this.gender) {
+        this.error('gender', 'انتخاب جنسیت الزامی است.');
+        return;
+      }
+      // ---- پایان تغییر ----
       if (this.slide === 2) {
         if (!this.validPhone)    { this.error('phoneNumber', 'شماره موبایل صحیح نیست'); return; }
         if (!this.validNational) { this.error('nationalId', 'کد ملی باید ۱۰ رقم باشد'); return; }
@@ -59,12 +70,13 @@ new Vue({
       }
 
       // call API
-      this.loading = true;  // ← NEW
+      this.loading = true;
       try {
         if (this.slide === 1) {
           await axios.post('/api/register/step1', {
             firstName: this.firstName,
-            lastName: this.lastName
+            lastName: this.lastName,
+            gender: this.gender
           });
         }
         else if (this.slide === 2) {
@@ -88,7 +100,7 @@ new Vue({
         else if (/ملی/.test(msg))  this.errorField = 'nationalId';
         else if (/ایمیل/.test(msg)) this.errorField = 'email';
       }
-      this.loading = false; // ← NEW
+      this.loading = false;
     },
     goToLogin() {
       this.mode = 'login';
@@ -102,7 +114,7 @@ new Vue({
       if (!this.validPhone) { this.error('loginPhone', 'شماره موبایل صحیح نیست'); return; }
       if (!this.password)   { this.error('loginPass', 'رمز را وارد کنید'); return; }
 
-      this.loading = true; // ← NEW
+      this.loading = true;
       try {
         const res = await axios.post('/api/login', {
           phoneNumber: this.phoneNumber,
@@ -114,7 +126,7 @@ new Vue({
       } catch (e) {
         this.errorMessage = e.response?.data?.message;
       }
-      this.loading = false; // ← NEW
+      this.loading = false;
     },
     error(field, msg) {
       this.errorField = field;
