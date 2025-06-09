@@ -1,12 +1,16 @@
+// public/js/group.js
+
 document.addEventListener('DOMContentLoaded', function(){
   // dashboard cards
   const cardScore         = document.getElementById('card-score');
   const cardGroup         = document.getElementById('card-group');
-  const cardRank          = document.getElementById('card-rank'); 
+  const cardRank          = document.getElementById('card-rank');
   const cardAnnouncements = document.getElementById('card-announcements');
 
   // group logic
   const groupArea = document.getElementById('group-area');
+  const socket = io(); // سوکت را یکبار در اینجا تعریف می‌کنیم
+  let currentGroupId = null; // برای نگهداری شناسه گروه فعلی جهت مدیریت اتاق سوکت
 
   async function loadMyGroup(){
     cardScore.textContent = '—';
@@ -14,6 +18,12 @@ document.addEventListener('DOMContentLoaded', function(){
     cardRank.textContent = '—';
     cardAnnouncements.textContent = '—';
     setLoadingState(true);  // فعال کردن اسپینر
+
+    if (currentGroupId) {
+      socket.emit('leaveGroupRoom', currentGroupId);
+      currentGroupId = null;
+    }
+
     try {
       const r = await axios.get('/api/groups/my');
       // r.data.member: آیا عضو گروه است؟
@@ -30,22 +40,28 @@ document.addEventListener('DOMContentLoaded', function(){
         cardGroup.textContent = g.name;
         cardRank.textContent  = g.rank;
         renderGroupDashboard(g, r.data.role);
+
+        if (g.id) {
+          socket.emit('joinGroupRoom', g.id);
+          currentGroupId = g.id;
+        }
       }
 
-      // اعلان‌ها
+      // START of EDIT: بهینه‌سازی واکشی اطلاعیه‌ها
+      // اعلان‌ها (بهینه شده)
       try {
-        const resA = await axios.get('/api/announcements');
-        const arr  = Array.isArray(resA.data) ? resA.data : [];
-        if (arr.length) {
-          arr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          cardAnnouncements.textContent = arr[0].title;
+        // به جای واکشی همه، فقط آخرین اطلاعیه را می‌گیریم
+        const resA = await axios.get('/api/announcements/latest');
+        if (resA.data && resA.data.title) {
+          cardAnnouncements.textContent = resA.data.title;
         } else {
           cardAnnouncements.textContent = '—';
         }
       } catch (e) {
-        console.error('خطا در واکشی اعلان‌ها', e);
+        console.error('خطا در واکشی آخرین اعلان‌', e);
         cardAnnouncements.textContent = '—';
       }
+      // END of EDIT
 
     } catch(err){
       console.error(err);
@@ -229,7 +245,6 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   // real-time via socket.io
-  const socket = io();
   socket.on('memberJoined', loadMyGroup);
   socket.on('memberRemoved', loadMyGroup);
   socket.on('groupDeleted', renderNotMember);

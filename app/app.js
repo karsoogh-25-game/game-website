@@ -87,9 +87,35 @@ app.use('/api/training', isUser, trainingRouter);
 app.use('/admin/api/training', isAdmin, trainingRouter);
 
 
-// ————— Socket.IO logging —————
+// ————— Socket.IO Room Management —————
 io.on('connection', socket => {
-  console.log('Socket connected:', socket.id);
+  console.log(`Socket connected: ${socket.id}`);
+
+  // رویداد برای پیوستن ادمین‌ها به اتاق خودشان
+  socket.on('joinAdminRoom', () => {
+    socket.join('admins');
+    console.log(`Socket ${socket.id} joined room: admins`);
+  });
+
+  // رویداد برای پیوستن کاربران به اتاق گروهشان
+  socket.on('joinGroupRoom', (groupId) => {
+    if (groupId) {
+      socket.join(`group-${groupId}`);
+      console.log(`Socket ${socket.id} joined room: group-${groupId}`);
+    }
+  });
+  
+  // رویداد برای خروج از اتاق گروه
+  socket.on('leaveGroupRoom', (groupId) => {
+    if (groupId) {
+      socket.leave(`group-${groupId}`);
+      console.log(`Socket ${socket.id} left room: group-${groupId}`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
 });
 
 // ————— Seed default admin & start server —————

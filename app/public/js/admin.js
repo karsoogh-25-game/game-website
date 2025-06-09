@@ -69,6 +69,22 @@ new Vue({
     socket.on('groupDeleted', ({ id }) => {
       this.groups = this.groups.filter(g => g.id !== id);
     });
+    
+    // لیسنرهای Socket.IO برای کاربران
+    socket.on('userUpdated', updatedUser => {
+        const userIndex = this.users.findIndex(u => u.id === updatedUser.id);
+        if (userIndex !== -1) {
+            this.$set(this.users, userIndex, updatedUser);
+        }
+        const mentorIndex = this.mentors.findIndex(m => m.id === updatedUser.id);
+        if (mentorIndex !== -1) {
+            this.$set(this.mentors, mentorIndex, updatedUser);
+        }
+    });
+    socket.on('userDeleted', ({ id }) => {
+        this.users = this.users.filter(u => u.id !== id);
+        this.mentors = this.mentors.filter(m => m.id !== id);
+    });
 
     // لیسنرهای محتوا
     socket.on('contentCreated',  c => this.fetchTraining());
@@ -79,6 +95,10 @@ new Vue({
     this.loadSection();
   },
   mounted() {
+    // START of EDIT: به محض بارگذاری پنل، به اتاق ادمین‌ها ملحق شو
+    socket.emit('joinAdminRoom');
+    // END of EDIT
+    
     document.getElementById('refresh-btn').addEventListener('click', this.refreshData);
   },
   methods: {
@@ -165,7 +185,6 @@ new Vue({
       try {
         await axios.delete(`/admin/api/users/${u.id}`);
         this.sendNotification('success', 'کاربر حذف شد');
-        this.fetchUsers();
       } catch {
         this.sendNotification('error', 'خطا در حذف کاربر');
       }
@@ -213,7 +232,7 @@ new Vue({
         longDescription: a.longDescription,
         attachments: (a.attachments || []).map(att => ({
           id: att.id,
-          displayName: att.displayName,
+          displayName: att.originalName,
           path: att.path
         })),
         newFiles: [],
@@ -251,34 +270,28 @@ new Vue({
         fd.append('shortDescription', this.form.shortDescription || '');
         fd.append('longDescription', this.form.longDescription || '');
 
-        // فایل‌های جدید و نام‌شان
         this.form.newFiles.forEach(obj => {
-          fd.append('attachments', obj.file);
-          fd.append('displayNamesNew', obj.displayName);
+          fd.append('attachments', obj.file, obj.displayName);
         });
 
-        // حذف ضمائم
         this.form.deletedAttachments.forEach(id => {
-          fd.append('deletedAttachments', id);
+          fd.append('deletedAttachments[]', id);
         });
+        
+        const url = this.editingId 
+            ? `/admin/api/announcements/${this.editingId}`
+            : '/admin/api/announcements';
+        const method = this.editingId ? 'put' : 'post';
 
-        // نام‌های به‌روز شده ضمائم موجود
-        this.form.attachments.forEach(att => {
-          fd.append('existingAttachmentIds', att.id);
-          fd.append('existingDisplayNames', att.displayName);
+        await axios[method](url, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
-
-        if (this.editingId) {
-          await axios.put(`/admin/api/announcements/${this.editingId}`, fd);
-          this.sendNotification('success', 'اطلاعیه بروزرسانی شد');
-        } else {
-          await axios.post('/admin/api/announcements', fd);
-          this.sendNotification('success', 'اطلاعیه جدید ایجاد شد');
-        }
-
+        
+        this.sendNotification('success', 'اطلاعیه با موفقیت ذخیره شد');
         this.closeForm();
         await this.fetchAnnouncements();
-      } catch {
+      } catch (err) {
+        console.error(err);
         this.sendNotification('error', 'خطا در ذخیره اطلاعیه');
       } finally {
         this.setLoadingState(false);
@@ -339,7 +352,7 @@ new Vue({
       this.editingContentId = null;
       this.contentForm = { title:'', shortDescription:'', longDescription:'', attachments:[], newFiles:[] };
       this.deletedContentIds = [];
-      this.showContentForm = true; // ← اینجا فعال می‌کنی
+      this.showContentForm = true;
     },
     openEditContentForm(c) {
       this.editingContentId = c.id;
@@ -350,8 +363,8 @@ new Vue({
         attachments: c.attachments.map(a=>({ id:a.id, displayName:a.originalName, path:a.path }))
       };
       this.deletedContentIds = [];
-      this.newFiles = [];
-      this.showForm = true;
+      this.contentForm.newFiles = [];
+      this.showContentForm = true;
     },
     markContentForDelete(id) {
       this.deletedContentIds.push(id);
@@ -369,21 +382,24 @@ new Vue({
       try {
         const fd = new FormData();
         fd.append('title', this.contentForm.title);
-        fd.append('shortDescription', this.contentForm.shortDescription);
-        fd.append('longDescription', this.contentForm.longDescription);
+        fd.append('shortDescription', this.contentForm.shortDescription || '');
+        fd.append('longDescription', this.contentForm.longDescription || '');
         this.deletedContentIds.forEach(id=> fd.append('deleteIds[]', id));
-        this.contentForm.newFiles.forEach(nf=>{
+        
+        this.contentForm.newFiles.forEach(nf => {
           fd.append('files', nf.file);
-          fd.append('displayNamesNew', nf.displayName);
         });
+
         const url = this.editingContentId
           ? `/admin/api/training/${this.editingContentId}`
           : '/admin/api/training';
+        
         await axios.post(url, fd, { headers:{ 'Content-Type':'multipart/form-data' }});
-        this.sendNotification('success','ذخیره شد');
-        this.showForm = false;
+        this.sendNotification('success','محتوا با موفقیت ذخیره شد');
+        this.showContentForm = false;
         await this.fetchTraining();
-      } catch {
+      } catch(err) {
+        console.error(err);
         this.sendNotification('error','خطا در ذخیره محتوا');
       } finally {
         this.setLoadingState(false);
@@ -394,7 +410,6 @@ new Vue({
       try {
         await axios.delete(`/admin/api/training/${c.id}`);
         this.sendNotification('success','حذف شد');
-        this.fetchTraining();
       } catch {
         this.sendNotification('error','خطا در حذف محتوا');
       }

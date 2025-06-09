@@ -98,10 +98,15 @@ exports.getMyGroup = async (req, res) => {
       attributes: ['id','firstName','lastName']
     });
 
-    // محاسبه رتبه (dense)
-    const allGroups = await Group.findAll({ order:[['score','DESC']] });
-    const distinctScores = [...new Set(allGroups.map(g => g.score))];
-    const rank = distinctScores.indexOf(group.score) + 1;
+    // محاسبه رتبه بهینه شده با کوئری مستقیم
+    const rankResult = await sequelize.query(
+        'SELECT COUNT(*) + 1 AS rank FROM (SELECT DISTINCT score FROM `Groups`) AS distinct_scores WHERE score > :currentScore',
+        {
+          replacements: { currentScore: group.score },
+          type: sequelize.QueryTypes.SELECT
+        }
+    );
+    const rank = rankResult[0].rank;
 
     res.json({
       member: true,
@@ -112,7 +117,7 @@ exports.getMyGroup = async (req, res) => {
         code: group.code,
         walletCode: group.walletCode,
         score: group.score,
-        rank,
+        rank, // استفاده از رتبه محاسبه شده بهینه
         members: members.map(u => ({ id:u.id, name:`${u.firstName} ${u.lastName}`, role:u.GroupMember.role }))
       }
     });
@@ -209,7 +214,10 @@ exports.mentorTransfer = async (req, res) => {
     // افزایش امتیاز گروه مقصد
     target.score += amt;
     await target.save({ transaction: t });
-    io.emit('bankUpdate', { code: target.walletCode });
+    
+    // ارسال پیام آپدیت فقط به گروه مقصد
+    io.to(`group-${target.id}`).emit('bankUpdate', { code: target.walletCode });
+
     await t.commit();
     return res.json({ success: true });
   } catch (err) {
@@ -265,12 +273,14 @@ exports.transfer = async (req, res) => {
     // کسر امتیاز
     fromGroup.score -= amt;
     await fromGroup.save({ transaction:t });
-    io.emit('bankUpdate', { code: fromGroup.walletCode });
+    // ارسال پیام آپدیت فقط به گروه مبدا
+    io.to(`group-${fromGroup.id}`).emit('bankUpdate', { code: fromGroup.walletCode });
 
     // افزایش امتیاز گروه مقصد
     target.score += amt;
     await target.save({ transaction:t });
-    io.emit('bankUpdate', { code: target.walletCode });
+    // ارسال پیام آپدیت فقط به گروه مقصد
+    io.to(`group-${target.id}`).emit('bankUpdate', { code: target.walletCode });
 
     await t.commit();
     return res.json({ success:true });

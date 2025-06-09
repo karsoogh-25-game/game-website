@@ -60,6 +60,7 @@ exports.createAnnouncement = async (req, res) => {
       }
     });
 
+    // به همه کاربران اطلاع بده
     req.io.emit('announcementCreated', result);
     return res.status(201).json(result);
   } catch (e) {
@@ -122,6 +123,7 @@ exports.updateAnnouncement = async (req, res) => {
       }
     });
 
+    // به همه کاربران اطلاع بده
     req.io.emit('announcementUpdated', result);
     return res.json(result);
   } catch (e) {
@@ -152,10 +154,29 @@ exports.deleteAnnouncement = async (req, res) => {
     // حذف اطلاعیه (ضمائم با قانون CASCADE پاک می‌شوند)
     await ann.destroy();
 
+    // به همه کاربران اطلاع بده
     req.io.emit('announcementDeleted', { id: ann.id });
     return res.status(204).end();
   } catch (e) {
     console.error('Error deleting announcement:', e);
     return res.status(400).json({ message: e.message });
+  }
+};
+
+// START of EDIT: اضافه کردن تابع جدید برای واکشی بهینه آخرین اطلاعیه
+/**
+ * GET /api/announcements/latest
+ * → فقط آخرین اطلاعیه را برمی‌گرداند (برای بهینه‌سازی داشبورد)
+ */
+exports.getLatestAnnouncement = async (req, res) => {
+  try {
+    const latest = await Announcement.findOne({
+      order: [['createdAt', 'DESC']],
+      attributes: ['title'] // فقط فیلد عنوان مورد نیاز است
+    });
+    return res.json(latest || null); // اگر هیچ اطلاعیه‌ای نبود، null برگردان
+  } catch (err) {
+    console.error('Error fetching latest announcement:', err);
+    return res.status(500).json({ message: 'خطا در بارگذاری آخرین اطلاعیه' });
   }
 };

@@ -40,14 +40,13 @@ exports.updateUser = async (req, res) => {
   // به‌روزرسانی کاربر
   await user.update(data);
 
-  // ارسال تغییرات به سایر کلاینت‌ها از طریق WebSocket
-  req.io.emit('userUpdated', user);
+  // START of EDIT: ارسال تغییرات فقط به اتاق ادمین‌ها
+  req.io.to('admins').emit('userUpdated', user);
+  // END of EDIT
 
   // پاسخ به کلاینت
   res.json(user);
 };
-
-
 
 // حذف کاربر
 exports.deleteUser = async (req, res) => {
@@ -55,6 +54,10 @@ exports.deleteUser = async (req, res) => {
   const user = await User.findByPk(id);
   if (!user) return res.status(404).json({ message: 'کاربر پیدا نشد' });
   await user.destroy();
-  req.io.emit('userDeleted', { id: user.id });
+  
+  // START of EDIT: ارسال تغییرات فقط به اتاق ادمین‌ها
+  req.io.to('admins').emit('userDeleted', { id: user.id });
+  // END of EDIT
+
   res.json({ message: 'کاربر حذف شد' });
 };

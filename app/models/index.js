@@ -3,15 +3,6 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const path = require('path');
 
-// --- کد قبلی مربوط به SQLite حذف یا کامنت می‌شود ---
-/*
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: path.join(__dirname, '..', 'database.sqlite'),
-  logging: false
-});
-*/
-
 // --- کد جدید برای اتصال به دیتابیس از طریق URL ---
 // این کد آدرس دیتابیس را از متغیر محیطی که در docker-compose.yml تعریف کردیم می‌خواند.
 // این روش بسیار امن‌تر و انعطاف‌پذیرتر است.
@@ -21,7 +12,15 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialectOptions: {
     // این گزینه برای اطمینان از سازگاری با نسخه‌های مختلف MySQL مفید است
     connectTimeout: 60000
+  },
+  // START of EDIT: اضافه کردن تنظیمات استخر اتصالات برای بهینه‌سازی
+  pool: {
+    max: 15,      // حداکثر تعداد اتصالات همزمان در استخر
+    min: 5,       // حداقل تعداد اتصالات باز در استخر
+    acquire: 30000, // حداکثر زمان (میلی‌ثانیه) برای گرفتن یک اتصال قبل از بروز خطا
+    idle: 10000     // حداکثر زمان (میلی‌ثانیه) که یک اتصال می‌تواند بیکار بماند قبل از بسته شدن
   }
+  // END of EDIT
 });
 // ------------------------------------------------
 
