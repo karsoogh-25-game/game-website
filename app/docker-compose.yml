@@ -1,0 +1,39 @@
+# docker-compose.yml
+
+services:
+  # MySQL Database Service
+  mysql_db:
+    image: mysql:8.0
+    container_name: mysql_db_container # A specific name for the container
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 'ligauk_password'
+      MYSQL_DATABASE: 'ligauk_db'
+      MYSQL_USER: 'ligauk_user'
+      MYSQL_PASSWORD: 'ligauk_password'
+    ports:
+      - "3306:3306"
+    volumes:
+      # Persist database data on the host machine
+      - mysql_data:/var/lib/mysql
+
+  # Node.js Application Service
+  app:
+    build: . # Build the image from the Dockerfile in the current directory
+    container_name: app_container # A specific name for the container
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql_db # Ensures mysql_db starts before the app
+    environment:
+      # The DATABASE_URL is used by Sequelize to connect to the database
+      DATABASE_URL: mysql://ligauk_user:ligauk_password@mysql_db:3306/ligauk_db
+      SESSION_SECRET: 'a-very-strong-and-secret-key-for-sessions'
+
+    # Use the wait-for-it script to delay app start until the DB is ready
+    entrypoint: ["/usr/local/bin/wait-for-it.sh", "mysql_db:3306", "--", "pm2-runtime", "app.js", "-i", "max"]
+
+volumes:
+  # Define the named volume for data persistence
+  mysql_data:

@@ -1,16 +1,20 @@
 // app.js
+
+// با این دستور، متغیرهای تعریف شده در فایل .env یا secret های داکر
+// در process.env در دسترس قرار می‌گیرند
 require('dotenv').config();
-const express        = require('express');
-const path           = require('path');
-const http           = require('http');
-const socketIO       = require('socket.io');
-const session        = require('express-session');
+
+const express = require('express');
+const path = require('path');
+const http = require('http');
+const socketIO = require('socket.io');
+const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const { sequelize, Admin } = require('./models');
 
-const app    = express();
+const app = express();
 const server = http.createServer(app);
-const io     = socketIO(server);
+const io = socketIO(server);
 
 // ———— make io available in controllers ————
 app.set('io', io);
@@ -18,7 +22,8 @@ app.set('io', io);
 // ————— Session setup —————
 const sessionStore = new SequelizeStore({ db: sequelize });
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  // اگر متغیر محیطی تعریف نشده بود، از یک مقدار پیش‌فرض امن استفاده کن
+  secret: process.env.SESSION_SECRET || 'a-default-fallback-secret-for-development',
   store: sessionStore,
   resave: false,
   saveUninitialized: false,
@@ -95,8 +100,14 @@ async function seedAdmin() {
   }
 }
 
+// صبر می‌کنیم تا اتصال به دیتابیس و همگام‌سازی جداول با موفقیت انجام شود
+// و سپس سرور را اجرا می‌کنیم
 sequelize.sync().then(async () => {
+  console.log('Database synced successfully.');
   await seedAdmin();
   const port = process.env.PORT || 3000;
-  server.listen(port, () => console.log(`Listening on port ${port}`));
+  server.listen(port, () => console.log(`Server is listening on port ${port}`));
+}).catch(err => {
+    // اگر اتصال به دیتابیس با خطا مواجه شد، آن را در لاگ نمایش بده
+    console.error('Failed to sync database:', err);
 });
