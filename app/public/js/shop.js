@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         return `
-        <div class="${cardClasses}">
+        <div class="${cardClasses}" id="unique-item-card-${item.id}">
           ${overlayHtml}
           <div class="aspect-square w-full bg-black/20">
             <img src="${item.image || 'https://placehold.co/300x300/2d3748/ffffff?text=Item'}" alt="${item.name}" class="w-full h-full object-contain">
@@ -290,6 +290,17 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => card.remove(), 500);
       }
     });
+
+    // --- START of EDIT: لیسنر جدید برای آپدیت لحظه‌ای آیتم‌های خاص ---
+    window.socket.on('uniqueItemUpdated', () => {
+        // برای سادگی و اطمینان از هماهنگی کامل داده‌ها،
+        // به جای آپدیت یک کارت، کل فروشگاه را رفرش می‌کنیم.
+        // این کار از بروز هرگونه ناهماهنگی در نمایش دارایی‌ها و آیتم‌ها جلوگیری می‌کند.
+        if (document.querySelector('.content-section.active')?.id === 'shop') {
+          loadShop();
+        }
+    });
+    // --- END of EDIT ---
   }
 
   // Initial Load
