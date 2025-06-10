@@ -4,6 +4,22 @@ document.addEventListener('DOMContentLoaded', function() {
   const myAssetsContainer = document.getElementById('my-assets-container');
   const btnRefresh = document.getElementById('btn-refresh');
 
+  function renderNotInGroupMessage() {
+    if (myAssetsContainer) myAssetsContainer.innerHTML = '';
+    if (shopContainer) {
+      shopContainer.innerHTML = `
+        <div class="col-span-full text-center p-5 bg-gray-800 rounded-lg">
+          <p class="text-xl text-yellow-400 mb-4">
+            برای استفاده از فروشگاه، ابتدا باید عضو یک گروه شوید.
+          </p>
+          <p class="text-gray-300">
+            می‌توانید از بخش "گروه من" یک گروه جدید بسازید یا به گروه دوستانتان ملحق شوید.
+          </p>
+        </div>
+      `;
+    }
+  }
+
   async function loadShop() {
     if (!shopContainer) return;
     setLoadingState(true);
@@ -16,6 +32,13 @@ document.addEventListener('DOMContentLoaded', function() {
       
       const shopData = shopRes.data;
       const myAssets = assetsRes.data;
+
+      // --- START of EDIT: بررسی وضعیت عضویت کاربر ---
+      if (myAssets.notInGroup) {
+        renderNotInGroupMessage();
+        return; // اجرای ادامه تابع متوقف می‌شود
+      }
+      // --- END of EDIT ---
 
       renderMyAssets(myAssets);
       renderShopItems(shopData, myAssets);
@@ -173,9 +196,6 @@ document.addEventListener('DOMContentLoaded', function() {
         uniqueItemsHtml = '<p class="text-gray-400 col-span-full">فعلاً آیتم خاصی برای فروش وجود ندارد.</p>';
     }
 
-    // --- START of EDIT: اصلاح ساختار HTML خروجی ---
-    // با افزودن یک div با کلاس col-span-full، مطمئن می‌شویم که محتوای ما
-    // تمام ستون‌های گرید والد را اشغال می‌کند و چیدمان داخلی آن را خودمان کنترل می‌کنیم.
     shopContainer.innerHTML = `
       <div class="col-span-full">
         <div class="w-full">
@@ -193,7 +213,6 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
       </div>
     `;
-    // --- END of EDIT ---
   }
   
   window.updateCosts = function(currencyId) {
@@ -291,16 +310,11 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
-    // --- START of EDIT: لیسنر جدید برای آپدیت لحظه‌ای آیتم‌های خاص ---
     window.socket.on('uniqueItemUpdated', () => {
-        // برای سادگی و اطمینان از هماهنگی کامل داده‌ها،
-        // به جای آپدیت یک کارت، کل فروشگاه را رفرش می‌کنیم.
-        // این کار از بروز هرگونه ناهماهنگی در نمایش دارایی‌ها و آیتم‌ها جلوگیری می‌کند.
         if (document.querySelector('.content-section.active')?.id === 'shop') {
           loadShop();
         }
     });
-    // --- END of EDIT ---
   }
 
   // Initial Load

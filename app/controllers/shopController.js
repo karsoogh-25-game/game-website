@@ -53,16 +53,14 @@ exports.getShopData = async (req, res) => {
       };
     }));
 
-    // --- START of EDIT: واکشی تمام آیتم‌های خاص به همراه مالکشان ---
     const uniqueItems = await UniqueItem.findAll({
       include: {
         model: Group,
         as: 'owner',
-        attributes: ['id', 'name'] // مهم: شناسه و نام گروه مالک
+        attributes: ['id', 'name']
       },
       order: [['createdAt', 'DESC']]
     });
-    // --- END of EDIT ---
 
     res.json({ currencies: currencyData, uniqueItems });
 
@@ -80,9 +78,14 @@ exports.getShopData = async (req, res) => {
 exports.getMyAssets = async (req, res) => {
     try {
       const groupMember = await sequelize.models.GroupMember.findOne({ where: { userId: req.session.userId } });
+      
+      // --- START of EDIT: بررسی عضویت کاربر در گروه ---
+      // اگر کاربر عضو گروهی نباشد، یک پاسخ مشخص برمی‌گردانیم
       if (!groupMember) {
-        return res.status(404).json({ message: 'شما عضو گروهی نیستید.' });
+        return res.json({ notInGroup: true });
       }
+      // --- END of EDIT ---
+
       const group = await Group.findByPk(groupMember.groupId);
   
       const currencyAssets = await Wallet.findAll({
@@ -94,14 +97,12 @@ exports.getMyAssets = async (req, res) => {
         where: { ownerGroupId: group.id }
       });
   
-      // --- START of EDIT: افزودن شناسه گروه به خروجی ---
       res.json({
-        groupId: group.id, // این شناسه برای مقایسه در فرانت‌اند ضروری است
+        groupId: group.id,
         score: group.score,
         currencies: currencyAssets,
         uniqueItems: uniqueItemAssets
       });
-      // --- END of EDIT ---
   
     } catch (err) {
       console.error('Error fetching user assets:', err);

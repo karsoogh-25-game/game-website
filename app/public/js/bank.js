@@ -14,7 +14,18 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (r.data.member) {
         renderGroupBank(r.data.group, r.data.role);
       } else {
-        bankArea.innerHTML = `<p class="error text-red-400">ابتدا باید عضو گروه شوید.</p>`;
+        // --- START of EDIT: تغییر پیام برای هماهنگی با فروشگاه ---
+        bankArea.innerHTML = `
+          <div class="text-center py-10 bg-gray-800 rounded-lg">
+            <p class="text-xl text-yellow-400 mb-4">
+              برای استفاده از بانک، ابتدا باید عضو یک گروه شوید.
+            </p>
+            <p class="text-gray-300">
+              می‌توانید از بخش "گروه من" یک گروه جدید بسازید یا به گروه دوستانتان ملحق شوید.
+            </p>
+          </div>
+        `;
+        // --- END of EDIT ---
       }
     } catch (e) {
       const msg = e.response?.data?.message || e.message;
