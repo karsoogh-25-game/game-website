@@ -31,7 +31,6 @@ async function updateAndBroadcastPrice(io, currency, transaction = null) {
   }
   return finalPrice;
 }
-// تابع کمکی را export می‌کنیم تا در کنترلر ادمین هم قابل استفاده باشد
 exports.updateAndBroadcastPrice = updateAndBroadcastPrice;
 
 
@@ -54,10 +53,16 @@ exports.getShopData = async (req, res) => {
       };
     }));
 
+    // --- START of EDIT: واکشی تمام آیتم‌های خاص به همراه مالکشان ---
     const uniqueItems = await UniqueItem.findAll({
-      where: { status: 'in_shop' },
+      include: {
+        model: Group,
+        as: 'owner',
+        attributes: ['id', 'name'] // مهم: شناسه و نام گروه مالک
+      },
       order: [['createdAt', 'DESC']]
     });
+    // --- END of EDIT ---
 
     res.json({ currencies: currencyData, uniqueItems });
 
@@ -89,11 +94,14 @@ exports.getMyAssets = async (req, res) => {
         where: { ownerGroupId: group.id }
       });
   
+      // --- START of EDIT: افزودن شناسه گروه به خروجی ---
       res.json({
+        groupId: group.id, // این شناسه برای مقایسه در فرانت‌اند ضروری است
         score: group.score,
         currencies: currencyAssets,
         uniqueItems: uniqueItemAssets
       });
+      // --- END of EDIT ---
   
     } catch (err) {
       console.error('Error fetching user assets:', err);
@@ -145,9 +153,9 @@ exports.buyCurrency = async (req, res) => {
   
       await t.commit();
   
-      // آپدیت نهایی قیمت و ارسال رویداد برای همه
       await updateAndBroadcastPrice(io, currency);
       io.emit('leaderboardUpdate');
+      io.emit('shopUpdate');
   
       res.json({ success: true, message: 'خرید با موفقیت انجام شد.' });
   
@@ -202,9 +210,9 @@ exports.sellCurrency = async (req, res) => {
 
         await t.commit();
 
-        // آپدیت نهایی قیمت و ارسال رویداد برای همه
         await updateAndBroadcastPrice(io, currency);
         io.emit('leaderboardUpdate');
+        io.emit('shopUpdate');
 
         res.json({ success: true, message: 'فروش با موفقیت انجام شد.' });
 
@@ -214,5 +222,3 @@ exports.sellCurrency = async (req, res) => {
         res.status(500).json({ message: err.message || 'خطا در پردازش فروش' });
     }
 };
-
-// تابع deleteCurrency از این فایل حذف شد و به adminShopController انتقال یافت.

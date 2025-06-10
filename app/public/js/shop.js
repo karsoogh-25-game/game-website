@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
       ? assets.currencies.map(c => `
           <div class="flex items-center justify-between bg-gray-700 p-2 rounded-lg">
             <div class="flex items-center">
-              <img src="${c.Currency.image || 'https://via.placeholder.com/40'}" class="w-8 h-8 rounded-full ml-3" alt="${c.Currency.name}">
+              <img src="${c.Currency.image || 'https://placehold.co/40x40/4a5568/ffffff?text=C'}" class="w-8 h-8 rounded-full ml-3" alt="${c.Currency.name}">
               <span class="font-semibold text-white">${c.Currency.name}</span>
             </div>
             <span class="text-sm text-gray-300 font-mono">${c.quantity.toFixed(2)}</span>
@@ -45,16 +45,33 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('')
       : '<p class="text-gray-400 px-2">هیچ ارزی ندارید.</p>';
 
+    const uniqueItemsHtml = assets.uniqueItems.length
+      ? assets.uniqueItems.map(i => `
+          <div class="flex items-center justify-between bg-gray-700/50 p-2 rounded-lg border-l-4 border-cyan-500">
+            <div class="flex items-center">
+              <img src="${i.image || 'https://placehold.co/40x40/4a5568/ffffff?text=I'}" class="w-8 h-8 rounded-full ml-3" alt="${i.name}">
+              <span class="font-semibold text-white">${i.name}</span>
+            </div>
+            <span class="text-xs text-gray-400 font-mono">${i.uniqueIdentifier}</span>
+          </div>
+        `).join('')
+      : '<p class="text-gray-400 px-2">هیچ آیتم خاصی ندارید.</p>';
+
     myAssetsContainer.innerHTML = `
       <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-8">
         <h3 class="text-xl font-bold text-white mb-4">دارایی‌های شما</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="md:col-span-1 bg-gray-700 p-3 rounded-lg flex flex-col items-center justify-center">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-1 bg-gray-700 p-3 rounded-lg flex flex-col items-center justify-center">
             <p class="text-gray-400 text-sm">امتیاز گروه</p>
             <p class="text-2xl font-bold text-green-400">${assets.score}</p>
           </div>
-          <div class="md:col-span-2 space-y-2">
+          <div class="lg:col-span-1 space-y-2">
+            <h4 class="text-gray-300 font-bold mb-1 text-sm">ارزها:</h4>
             ${currenciesHtml}
+          </div>
+          <div class="lg:col-span-1 space-y-2">
+            <h4 class="text-gray-300 font-bold mb-1 text-sm">آیتم‌های خاص:</h4>
+            ${uniqueItemsHtml}
           </div>
         </div>
       </div>
@@ -62,95 +79,137 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function renderShopItems(data, myAssets) {
-    let html = '';
-
-    html += '<h3 class="col-span-full text-2xl font-bold text-yellow-400 mb-4">بازار ارز</h3>';
-    if (data.currencies.length) {
-      html += data.currencies.map(c => {
+    let currenciesHtml = '';
+    if (data.currencies && data.currencies.length) {
+      currenciesHtml = data.currencies.map(c => {
         const userCurrency = myAssets.currencies.find(asset => asset.currencyId === c.id);
         const userQuantity = userCurrency ? userCurrency.quantity.toFixed(2) : '0.00';
 
-        // --- START of EDIT ---
         return `
         <div class="shop-card bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col p-4 space-y-3"
              data-price="${c.currentPrice}" id="card-currency-${c.id}">
           <div class="flex items-center">
-            <img src="${c.image || 'https://via.placeholder.com/60'}" alt="${c.name}" class="w-12 h-12 rounded-full object-cover ml-4">
+            <img src="${c.image || 'https://placehold.co/60x60/4a5568/ffffff?text=C'}" alt="${c.name}" class="w-12 h-12 rounded-full object-cover ml-4">
             <div>
               <h4 class="text-xl font-bold text-white">${c.name}</h4>
               <p class="text-sm font-semibold text-green-400" id="price-display-${c.id}">۱ واحد = ${c.currentPrice.toFixed(2)} امتیاز</p>
             </div>
           </div>
-
           <p class="text-sm text-gray-400 border-t border-b border-gray-700 py-2">${c.description || 'توضیحات موجود نیست.'}</p>
-          
           <p class="text-xs text-gray-400">موجودی شما: ${userQuantity}</p>
-          
           <div class="flex items-center space-x-2 space-x-reverse">
-            <input type="number" id="amount-currency-${c.id}" min="0" placeholder="مقدار"
-                   oninput="updateCosts(${c.id})"
-                   class="input-field w-full text-center appearance-none">
+            <input type="number" id="amount-currency-${c.id}" min="0" placeholder="مقدار" oninput="updateCosts(${c.id})" class="input-field w-full text-center appearance-none">
             <div class="flex flex-col space-y-2">
               <button class="btn-primary px-3 py-1 text-sm" onclick="buyCurrency(${c.id})">خرید</button>
               <button class="btn-secondary px-3 py-1 text-sm" onclick="sellCurrency(${c.id})">فروش</button>
             </div>
           </div>
-          
           <div class="text-center bg-gray-900/50 p-2 rounded mt-2">
             <p class="text-sm text-gray-300">مبلغ کل: 
               <span id="total-cost-${c.id}" class="font-mono text-lg text-yellow-300">0.00</span> امتیاز
             </p>
           </div>
-        </div>
-      `
-      // --- END of EDIT ---
+        </div>`;
       }).join('');
+    } else {
+        currenciesHtml = `<p class="text-gray-400 col-span-full">فعلاً ارزی برای معامله وجود ندارد.</p>`;
     }
 
-    html += '<h3 class="col-span-full text-2xl font-bold text-cyan-400 mb-4 mt-8">آیتم‌های خاص</h3>';
-    if (data.uniqueItems.length) {
-      html += data.uniqueItems.map(i => `
-        <div class="shop-card bg-gray-800 rounded-lg shadow-lg overflow-hidden border-2 border-cyan-500/50 flex flex-col">
-          <img src="${i.image || 'https://via.placeholder.com/300x200'}" alt="${i.name}" class="w-full h-40 object-cover">
-          <div class="p-4 flex flex-col flex-grow">
-            <h4 class="text-xl font-bold text-white">${i.name}</h4>
-            <p class="text-gray-300 mt-2 flex-grow">${i.description || ''}</p>
+    let uniqueItemsHtml = '';
+    if (data.uniqueItems && data.uniqueItems.length) {
+      data.uniqueItems.sort((a, b) => {
+        if (a.status === 'in_shop' && b.status !== 'in_shop') return -1;
+        if (a.status !== 'in_shop' && b.status === 'in_shop') return 1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+
+      uniqueItemsHtml = data.uniqueItems.map(item => {
+        const isOwned = item.status === 'owned';
+        const isMyItem = isOwned && item.ownerGroupId === myAssets.groupId;
+
+        let cardClasses = 'shop-card bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col relative';
+        if (isMyItem) {
+          cardClasses += ' border-2 border-green-500 shadow-lg shadow-green-500/20';
+        } else if(isOwned) {
+          cardClasses += ' border-2 border-transparent';
+        } else {
+            cardClasses += ' border-2 border-cyan-500/50';
+        }
+
+        let overlayHtml = '';
+        if (isOwned && !isMyItem && item.owner) {
+          overlayHtml = `<div class="absolute inset-0 bg-black bg-opacity-70 z-10 flex flex-col items-center justify-center p-2">
+                           <p class="text-white font-bold text-center">فروخته شد به:</p>
+                           <p class="text-amber-400 font-semibold text-center">${item.owner.name}</p>
+                         </div>`;
+        }
+        
+        let buttonHtml = '';
+        if (item.status === 'in_shop') {
+          buttonHtml = `<button class="btn-primary mt-2" onclick="buyUniqueItem(${item.id})">خرید</button>`;
+        } else if (isMyItem) {
+          const sellPrice = Math.floor(item.purchasePrice * 0.85);
+          buttonHtml = `<button class="btn-secondary mt-2" onclick="sellUniqueItem(${item.id})">فروش (بازگشت ${sellPrice} امتیاز)</button>`;
+        }
+
+        return `
+        <div class="${cardClasses}">
+          ${overlayHtml}
+          <div class="aspect-square w-full bg-black/20">
+            <img src="${item.image || 'https://placehold.co/300x300/2d3748/ffffff?text=Item'}" alt="${item.name}" class="w-full h-full object-contain">
+          </div>
+          <div class="p-3 flex flex-col flex-grow">
+            <h4 class="text-lg font-bold text-white">${item.name}</h4>
+            <p class="text-gray-400 text-xs font-mono my-1">${item.uniqueIdentifier}</p>
+            <p class="text-gray-300 text-sm mt-2 flex-grow">${item.description || ''}</p>
             <div class="mt-4">
-              <p class="text-lg font-semibold text-green-400">قیمت: ${i.purchasePrice} امتیاز</p>
-              <button class="btn-secondary w-full mt-2" onclick="alert('خرید در مرحله بعد پیاده‌سازی می‌شود')">خرید</button>
+              <p class="text-md font-semibold text-green-400">قیمت: ${item.purchasePrice} امتیاز</p>
+              ${buttonHtml}
             </div>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     } else {
-        html += '<p class="text-gray-400 col-span-full">فعلاً آیتم خاصی برای فروش وجود ندارد.</p>';
+        uniqueItemsHtml = '<p class="text-gray-400 col-span-full">فعلاً آیتم خاصی برای فروش وجود ندارد.</p>';
     }
 
-    shopContainer.innerHTML = html;
+    // --- START of EDIT: اصلاح ساختار HTML خروجی ---
+    // با افزودن یک div با کلاس col-span-full، مطمئن می‌شویم که محتوای ما
+    // تمام ستون‌های گرید والد را اشغال می‌کند و چیدمان داخلی آن را خودمان کنترل می‌کنیم.
+    shopContainer.innerHTML = `
+      <div class="col-span-full">
+        <div class="w-full">
+          <h3 class="text-2xl font-bold text-yellow-400 mb-4">بازار ارز</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            ${currenciesHtml}
+          </div>
+          
+          <hr class="border-gray-700 my-8">
+  
+          <h3 class="text-2xl font-bold text-cyan-400 mb-4">آیتم‌های خاص</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            ${uniqueItemsHtml}
+          </div>
+        </div>
+      </div>
+    `;
+    // --- END of EDIT ---
   }
   
   window.updateCosts = function(currencyId) {
     const card = document.getElementById(`card-currency-${currencyId}`);
     const amountInput = document.getElementById(`amount-currency-${currencyId}`);
     const totalCostEl = document.getElementById(`total-cost-${currencyId}`);
-
     if (!card || !amountInput || !totalCostEl) return;
-
     const price = parseFloat(card.dataset.price);
     const amount = parseFloat(amountInput.value) || 0;
-
-    const total = price * amount;
-    
-    totalCostEl.textContent = total.toFixed(2);
+    totalCostEl.textContent = (price * amount).toFixed(2);
   }
   
   window.buyCurrency = async function(currencyId) {
     const amountInput = document.getElementById(`amount-currency-${currencyId}`);
     const amount = parseFloat(amountInput.value);
-    if (!amount || amount <= 0) {
-      return sendNotification('error', 'لطفاً مقدار معتبری برای خرید وارد کنید.');
-    }
-    
+    if (!amount || amount <= 0) return sendNotification('error', 'لطفاً مقدار معتبری برای خرید وارد کنید.');
     sendConfirmationNotification('confirm', `آیا از خرید ${amount} واحد از این ارز اطمینان دارید؟`, async (confirmed) => {
       if (!confirmed) return;
       setLoadingState(true);
@@ -160,21 +219,14 @@ document.addEventListener('DOMContentLoaded', function() {
         amountInput.value = '';
         updateCosts(currencyId);
         loadShop();
-      } catch (err) {
-        sendNotification('error', err.response?.data?.message || 'خطا در انجام خرید');
-      } finally {
-        setLoadingState(false);
-      }
+      } catch (err) { sendNotification('error', err.response?.data?.message || 'خطا در انجام خرید'); } finally { setLoadingState(false); }
     });
   };
 
   window.sellCurrency = async function(currencyId) {
     const amountInput = document.getElementById(`amount-currency-${currencyId}`);
     const amount = parseFloat(amountInput.value);
-    if (!amount || amount <= 0) {
-      return sendNotification('error', 'لطفاً مقدار معتبری برای فروش وارد کنید.');
-    }
-
+    if (!amount || amount <= 0) return sendNotification('error', 'لطفاً مقدار معتبری برای فروش وارد کنید.');
     sendConfirmationNotification('confirm', `آیا از فروش ${amount} واحد از این ارز اطمینان دارید؟`, async (confirmed) => {
       if (!confirmed) return;
       setLoadingState(true);
@@ -184,50 +236,52 @@ document.addEventListener('DOMContentLoaded', function() {
         amountInput.value = '';
         updateCosts(currencyId);
         loadShop();
-      } catch (err) {
-        sendNotification('error', err.response?.data?.message || 'خطا در انجام فروش');
-      } finally {
-        setLoadingState(false);
-      }
+      } catch (err) { sendNotification('error', err.response?.data?.message || 'خطا در انجام فروش'); } finally { setLoadingState(false); }
     });
   };
 
-  // مدیریت رویدادها
-  document.querySelectorAll('.menu-item[data-section="shop"]').forEach(item => {
-    item.addEventListener('click', loadShop);
-  });
-  
-  if (btnRefresh) {
-    btnRefresh.addEventListener('click', () => {
-      if (document.querySelector('.content-section.active')?.id === 'shop') {
+  window.buyUniqueItem = async function(itemId) {
+    sendConfirmationNotification('confirm', `آیا از خرید این آیتم خاص اطمینان دارید؟`, async (confirmed) => {
+      if (!confirmed) return;
+      setLoadingState(true);
+      try {
+        await axios.post(`/api/shop/unique-items/${itemId}/buy`);
+        sendNotification('success', 'آیتم خاص با موفقیت خریداری شد!');
         loadShop();
-      }
+      } catch (err) { sendNotification('error', err.response?.data?.message || 'خطا در خرید آیتم'); } finally { setLoadingState(false); }
     });
+  };
+
+  window.sellUniqueItem = async function(itemId) {
+    sendConfirmationNotification('confirm', `آیا از فروش این آیتم به فروشگاه اطمینان دارید؟ (۸۵٪ امتیاز بازگردانده می‌شود)`, async (confirmed) => {
+      if (!confirmed) return;
+      setLoadingState(true);
+      try {
+        await axios.post(`/api/shop/unique-items/${itemId}/sell`);
+        sendNotification('success', 'آیتم با موفقیت به فروشگاه فروخته شد!');
+        loadShop();
+      } catch (err) { sendNotification('error', err.response?.data?.message || 'خطا در فروش آیتم'); } finally { setLoadingState(false); }
+    });
+  };
+
+  // Event Listeners
+  document.querySelectorAll('.menu-item[data-section="shop"]').forEach(item => item.addEventListener('click', loadShop));
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', () => { if (document.querySelector('.content-section.active')?.id === 'shop') loadShop(); });
   }
 
-  // آپدیت لحظه‌ای با سوکت
+  // Socket.IO Listeners
   if (window.socket) {
-    // رویداد کلی برای رفرش کردن، مثلا بعد از خرید و فروش
-    window.socket.on('shopUpdate', () => {
-      if (document.querySelector('.content-section.active')?.id === 'shop') {
-        loadShop();
-      }
-    });
-
-    // رویداد مخصوص برای آپدیت قیمت یک ارز خاص
+    window.socket.on('shopUpdate', () => { if (document.querySelector('.content-section.active')?.id === 'shop') loadShop(); });
     window.socket.on('priceUpdate', ({ currencyId, newPrice }) => {
       const card = document.getElementById(`card-currency-${currencyId}`);
       if (card) {
         card.dataset.price = newPrice;
         const priceEl = document.getElementById(`price-display-${currencyId}`);
-        if (priceEl) {
-          priceEl.textContent = `۱ واحد = ${newPrice.toFixed(2)} امتیاز`;
-        }
+        if (priceEl) priceEl.textContent = `۱ واحد = ${newPrice.toFixed(2)} امتیاز`;
         updateCosts(currencyId);
       }
     });
-
-    // رویداد مخصوص برای حذف یک ارز از فروشگاه
     window.socket.on('currencyDeleted', ({ currencyId }) => {
       const card = document.getElementById(`card-currency-${currencyId}`);
       if (card) {
@@ -238,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // بارگذاری اولیه
+  // Initial Load
   if (document.querySelector('.content-section.active')?.id === 'shop') {
     loadShop();
   }

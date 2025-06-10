@@ -103,9 +103,15 @@ app.use('/admin/api/training', isAdmin, trainingRouter);
 const adminShopRouter = require('./routes/adminShop');
 app.use('/admin/api/shop', isAdmin, adminShopRouter);
 
-// --- START of EDIT: روت جدید برای فروشگاه کاربر ---
+const adminUniqueItemsRouter = require('./routes/adminUniqueItems');
+app.use('/admin/api/unique-items', isAdmin, adminUniqueItemsRouter);
+
 const shopRouter = require('./routes/shop');
 app.use('/api/shop', isUser, shopRouter);
+
+// --- START of EDIT: افزودن روت جدید برای خرید و فروش آیتم‌های خاص ---
+const shopUniqueItemsRouter = require('./routes/shopUniqueItems');
+app.use('/api/shop/unique-items', isUser, shopUniqueItemsRouter);
 // --- END of EDIT ---
 
 const groupRoutes = require('./routes/group');

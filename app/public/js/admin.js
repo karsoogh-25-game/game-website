@@ -7,7 +7,8 @@ new Vue({
     adminAnnouncementsMixin,
     adminGroupsMixin,
     adminContentsMixin,
-    shopAdminMixin // <<< این خط اصلاح شد
+    shopAdminMixin, // برای ارزها
+    adminUniqueItemsMixin // --- START of EDIT: میکسین جدید برای آیتم‌های خاص ---
   ],
   data: {
     editingId: null, // این فیلد ممکن است بین mixinها مشترک باشد، پس در سطح اصلی می‌ماند
@@ -104,7 +105,9 @@ new Vue({
             case 'contents': await this.fetchTraining(); break;
             case 'items':
                 await this.fetchCurrencies();
-                // await this.fetchUniqueItems(); // For the future
+                // --- START of EDIT: فعال کردن فراخوانی آیتم‌های خاص ---
+                await this.fetchUniqueItems();
+                // --- END of EDIT ---
                 break;
         }
         this.setLoadingState(false);
