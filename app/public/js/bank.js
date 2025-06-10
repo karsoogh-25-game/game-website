@@ -14,9 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (r.data.member) {
         renderGroupBank(r.data.group, r.data.role);
       } else {
-        // --- START of EDIT: تغییر پیام برای هماهنگی با فروشگاه ---
         bankArea.innerHTML = `
-          <div class="text-center py-10 bg-gray-800 rounded-lg">
+          <div class="text-center p-5 bg-gray-800 rounded-lg">
             <p class="text-xl text-yellow-400 mb-4">
               برای استفاده از بانک، ابتدا باید عضو یک گروه شوید.
             </p>
@@ -25,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </p>
           </div>
         `;
-        // --- END of EDIT ---
       }
     } catch (e) {
       const msg = e.response?.data?.message || e.message;

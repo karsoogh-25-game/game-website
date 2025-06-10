@@ -127,7 +127,7 @@
       <div class="flex items-center space-x-4">
         <button id="btn-refresh" class="text-gray-400 hover:text-white"><i class="fas fa-sync-alt text-xl"></i></button>
         <button id="btn-notifications" class="relative text-gray-400 hover:text-white"><i class="fas fa-bell text-xl"></i><span class="hidden absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span></button>
-        <a href='/logout' class="text-gray-400 hover:text-white"><i class="fas fa-sign-out-alt text-xl"></i></a>
+        <a href='/logout' class="text-gray-400 hover:text-white pr-3"><i class="fas fa-sign-out-alt text-xl"></i></a>
       </div>
     </header>
 
@@ -146,39 +146,30 @@
       </section>
 
       <section id="groups" class="content-section hidden">
-        <h2 class="text-xl font-bold text-white mb-6 text-center">گروه‌بندی</h2>
         <div id="group-area" class="max-w-2xl mx-auto space-y-6"></div>
       </section>
 
       <section id="bank" class="content-section hidden">
-        <h2 class="text-xl font-bold text-white mb-4 text-center">بانک</h2>
-        <div class="bg-gray-700 rounded-lg p-6 max-w-md mx-auto space-y-4">
-          <div id="bank-area"></div>
-        </div>
+        <div id="bank-area"></div>
       </section>
       
       <section id="shop" class="content-section">
-        <div id="my-assets-container" class="mb-8">
-          </div>
-        
-        <div id="shop-items-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          </div>
+        <div id="my-assets-container" class="mb-8"></div>
+        <div id="shop-items-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
       </section>
+
       <section id="scoreboard" class="content-section hidden">
-        <h2 class="text-2xl font-bold text-white mb-6 text-center">جدول امتیازات</h2>
         <div id="scoreboard-content" class="max-w-4xl mx-auto">
           </div>
       </section>
       
       <section id="announcements" class="content-section hidden">
-        <h2 class="text-xl font-bold text-white mb-4">اطلاعیه‌ها</h2>
         <div id="announcements-list" class="space-y-4 text-gray-300">
           <p class="text-gray-400 text-center py-6">در حال بارگذاری اطلاعیه‌ها…</p>
         </div>
       </section>
 
       <section id="training" class="content-section hidden">
-        <h2 class="text-xl font-bold text-white mb-4"><%= sections.find(s => s.id==='training').label %></h2>
         <div id="training-list" class="space-y-4 text-gray-300">
           <p class="text-gray-400 text-center py-6">در حال بارگذاری محتواها…</p>
         </div>
