@@ -62,6 +62,14 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'groupId',
       otherKey: 'userId'
     });
+
+    // --- ارتباطات جدید برای فروشگاه ---
+    // هر گروه می‌تواند چندین کیف پول ارزی داشته باشد (ارتباط با جدول واسط)
+    Group.hasMany(models.Wallet, { foreignKey: 'groupId' });
+    
+    // هر گروه می‌تواند چندین آیتم خاص را در مالکیت داشته باشد
+    Group.hasMany(models.UniqueItem, { as: 'ownedItems', foreignKey: 'ownerGroupId' });
+    // --- پایان بخش جدید ---
   };
 
   return Group;

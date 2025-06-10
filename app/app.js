@@ -96,13 +96,21 @@ app.use('/admin/api/announcements', isAdmin, announcementsRouter);
 const adminGroupsRouter = require('./routes/adminGroups')(io);
 app.use('/admin/api/groups', isAdmin, adminGroupsRouter);
 
-const groupRoutes = require('./routes/group');
-app.use('/api/groups', isUser, groupRoutes);
-app.use('/dashboard', isUser, require('./routes/user'));
-
 const trainingRouter = require('./routes/training')(io);
 app.use('/api/training', isUser, trainingRouter);
 app.use('/admin/api/training', isAdmin, trainingRouter);
+
+const adminShopRouter = require('./routes/adminShop');
+app.use('/admin/api/shop', isAdmin, adminShopRouter);
+
+// --- START of EDIT: روت جدید برای فروشگاه کاربر ---
+const shopRouter = require('./routes/shop');
+app.use('/api/shop', isUser, shopRouter);
+// --- END of EDIT ---
+
+const groupRoutes = require('./routes/group');
+app.use('/api/groups', isUser, groupRoutes);
+app.use('/dashboard', isUser, require('./routes/user'));
 
 
 // ————— Socket.IO Room Management (اصلاح شده برای امنیت بیشتر) —————

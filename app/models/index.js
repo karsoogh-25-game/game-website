@@ -39,6 +39,9 @@ db.Announcement            = require('./announcement')(sequelize, DataTypes);
 db.AnnouncementAttachment  = require('./announcementAttachment')(sequelize, DataTypes);
 db.Content                 = require('./content')(sequelize, DataTypes);
 db.ContentAttachment       = require('./contentAttachment')(sequelize, DataTypes);
+db.Currency    = require('./currency')(sequelize, DataTypes);
+db.Wallet      = require('./wallet')(sequelize, DataTypes);
+db.UniqueItem  = require('./uniqueItem')(sequelize, DataTypes);
 
 // set up associations
 // این بخش هم بدون تغییر باقی می‌ماند

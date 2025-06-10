@@ -71,17 +71,17 @@
     <nav class="flex-grow overflow-y-auto">
       <ul class="mt-4">
         <% const sections = [
-              { id:'dashboard', label:'داشبورد', icon:'tachometer-alt' },
-              { id:'training',  label:'محتوای آموزشی', icon:'book' },
-              { id:'groups',    label:'گروه‌بندی', icon:'users' },
-              { id:'bank',      label:'بانک', icon:'university' },
-              { id:'store',     label:'فروشگاه', icon:'store' },
-              { id:'scoreboard',label:'جدول امتیازات', icon:'list-ol' },
-              { id:'announcements',label:'اطلاعیه‌ها', icon:'bullhorn' },
-            ];
+             { id:'dashboard', label:'داشبورد', icon:'tachometer-alt' },
+             { id:'training',  label:'محتوای آموزشی', icon:'book' },
+             { id:'groups',    label:'گروه‌بندی', icon:'users' },
+             { id:'bank',      label:'بانک', icon:'university' },
+             { id:'shop',      label:'فروشگاه', icon:'store' }, // ID changed from 'store' to 'shop'
+             { id:'scoreboard',label:'جدول امتیازات', icon:'list-ol' },
+             { id:'announcements',label:'اطلاعیه‌ها', icon:'bullhorn' },
+           ];
         %>
         <% sections.forEach(s => {
-              if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
+             if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
         %>
           <li>
             <a href="#" class="menu-item flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
@@ -105,7 +105,7 @@
     <nav class="py-4 overflow-y-auto">
       <ul>
         <% sections.forEach(s => {
-              if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
+             if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
         %>
           <li>
             <a href="#" class="menu-item block px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
@@ -157,11 +157,13 @@
         </div>
       </section>
       
-      <section id="store" class="content-section hidden">
-        <h2 class="text-xl font-bold text-white mb-4"><%= sections.find(s => s.id==='store').label %></h2>
-        <p class="text-gray-500 text-center py-8">این بخش به زودی فعال خواهد شد...</p>
+      <section id="shop" class="content-section">
+        <div id="my-assets-container" class="mb-8">
+          </div>
+        
+        <div id="shop-items-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          </div>
       </section>
-
       <section id="scoreboard" class="content-section hidden">
         <h2 class="text-2xl font-bold text-white mb-6 text-center">جدول امتیازات</h2>
         <div id="scoreboard-content" class="max-w-4xl mx-auto">
@@ -196,5 +198,7 @@
   <script src="/js/announcements.js"></script>
   <script src="/js/training.js"></script>
   <script src="/js/bank.js"></script>
-  <script src="/js/leaderboard.js"></script> </body>
+  <script src="/js/leaderboard.js"></script>
+  <script src="/js/shop.js"></script>
+  </body>
 </html>
