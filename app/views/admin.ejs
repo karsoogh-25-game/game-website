@@ -154,7 +154,6 @@
       <section id="announcements" class="content-section" :class="{'active fade-in': activeSection==='announcements'}">
         <h2 class="text-2xl font-bold mb-4">مدیریت اطلاعیه‌ها</h2>
         <button @click="openCreateForm" class="btn-primary px-4 py-2 mb-4">ایجاد اطلاعیه جدید</button>
-
         <table class="min-w-full bg-gray-700 rounded overflow-hidden text-sm">
             <thead>
                 <tr class="bg-gray-800 text-gray-300">
@@ -172,15 +171,12 @@
                 </tr>
               </tbody>
         </table>
-
         <div v-if="showForm" class="modal-backdrop">
           <div class="modal-content">
             <h3 class="text-xl font-bold">{{ editingId ? 'ویرایش اطلاعیه' : 'ایجاد اطلاعیه جدید' }}</h3>
-            
             <input v-model="form.title" placeholder="عنوان *" class="input-field w-full mt-4" />
             <input v-model="form.shortDescription" placeholder="مختصر" class="input-field w-full mt-2" />
             <textarea v-model="form.longDescription" placeholder="توضیح کامل" class="input-field w-full h-24 mt-2"></textarea>
-
             <div v-if="form.attachments.length">
                 <p class="font-medium mt-4">ضمائم فعلی:</p>
                 <ul class="space-y-2 mt-2">
@@ -190,7 +186,6 @@
                     </li>
                 </ul>
             </div>
-
             <div v-if="form.newFiles.length">
                 <p class="font-medium mt-4">فایل‌های جدید:</p>
                 <ul class="space-y-2 mt-2">
@@ -200,9 +195,7 @@
                     </li>
                 </ul>
             </div>
-
             <input type="file" multiple @change="onFileChange" class="w-full mt-4" />
-
             <div class="flex justify-end space-x-2 mt-6">
               <button @click="closeForm" class="btn-secondary px-4 py-2">انصراف</button>
               <button @click="saveAnnouncement" class="btn-primary px-4 py-2">{{ editingId ? 'ذخیره' : 'ایجاد' }}</button>
@@ -240,13 +233,24 @@
         <div v-if="showCurrencyForm" class="modal-backdrop">
           <div class="modal-content">
             <h3 class="text-xl font-bold mb-4">{{ editingId ? 'ویرایش ارز' : 'ایجاد ارز جدید' }}</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input v-model="currencyForm.name" placeholder="نام ارز (مثلا: سکه طلا)" class="input-field">
-              <input v-model.number="currencyForm.basePrice" type="number" placeholder="قیمت پایه" class="input-field">
-              <input v-model.number="currencyForm.priceCoefficient" type="number" step="0.001" placeholder="ضریب نوسان قیمت" class="input-field">
-              <input v-model="currencyForm.image" placeholder="لینک تصویر (اختیاری)" class="input-field">
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input v-model="currencyForm.name" placeholder="نام ارز (مثلا: سکه طلا)" class="input-field">
+                <input v-model.number="currencyForm.basePrice" type="number" placeholder="قیمت پایه" class="input-field">
+                <input v-model.number="currencyForm.priceCoefficient" type="number" step="0.001" placeholder="ضریب نوسان قیمت" class="input-field">
+              </div>
+              <textarea v-model="currencyForm.description" placeholder="توضیحات (اختیاری)" class="input-field w-full" rows="3"></textarea>
+              
+              <div>
+                <label class="block mb-2 text-sm font-medium text-gray-300">عکس ارز</label>
+                <div v-if="editingId && currencyForm.image" class="mb-2">
+                    <img :src="currencyForm.image" alt="عکس فعلی" class="w-24 h-24 rounded-lg object-cover">
+                </div>
+                <input type="file" @change="handleFileSelect($event)" class="input-field w-full" accept="image/*">
+                <p class="text-xs text-gray-400 mt-1">یک عکس جدید برای ایجاد یا جایگزینی عکس فعلی انتخاب کنید.</p>
+              </div>
+
             </div>
-            <textarea v-model="currencyForm.description" placeholder="توضیحات (اختیاری)" class="input-field w-full mt-4" rows="3"></textarea>
             <div class="flex justify-end mt-6">
               <button @click="showCurrencyForm = false" class="btn-secondary ml-2 px-4 py-2">انصراف</button>
               <button @click="saveCurrency" class="btn-primary px-4 py-2">ذخیره</button>
@@ -259,23 +263,29 @@
             <h2 class="text-2xl font-bold">مدیریت ارزها</h2>
             <button @click="openCreateCurrencyForm" class="btn-primary">ایجاد ارز جدید</button>
           </div>
-          
           <div class="overflow-x-auto">
             <table class="admin-table w-full compact-table">
               <thead>
                 <tr>
-                  <th>نام ارز</th><th>قیمت پایه</th><th>ضریب نوسان</th><th>ضریب ادمین</th><th>عملیات</th>
+                  <th>عکس</th>
+                  <th>نام ارز</th>
+                  <th>قیمت پایه</th>
+                  <th>ضریب نوسان</th>
+                  <th>ضریب ادمین</th>
+                  <th>عملیات</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="c in currencies" :key="c.id">
+                  <td><img :src="c.image || 'https://via.placeholder.com/40'" class="w-10 h-10 rounded-full object-cover"></td>
                   <td>{{ c.name }}</td>
                   <td>{{ c.basePrice }}</td>
                   <td>{{ c.priceCoefficient }}</td>
                   <td>{{ c.adminModifier }}</td>
                   <td>
-                    <button @click="openEditCurrencyForm(c)" class="btn-secondary text-sm">ویرایش</button>
-                    <button @click="applyModifier(c)" class="btn-primary text-sm ml-2">اعمال ضریب</button>
+                    <button @click="openEditCurrencyForm(c)" class="btn-secondary text-sm ml-1">ویرایش</button>
+                    <button @click="applyModifier(c)" class="btn-primary text-sm ml-1">اعمال ضریب</button>
+                    <button @click="deleteCurrency(c)" class="btn-secondary text-sm">حذف</button>
                   </td>
                 </tr>
               </tbody>
@@ -353,7 +363,6 @@
     </div>
   </div>
   
-  <script src="/socket.io/socket.io.js"></script>
   <script src="/js/socket-manager.js"></script>
 
   <script src="/js/admin-users-mixin.js"></script>
@@ -363,6 +372,6 @@
   <script src="/js/admin-shop-mixin.js"></script>
 
   <script src="/js/admin.js"></script>
-  
+
   </body>
 </html>

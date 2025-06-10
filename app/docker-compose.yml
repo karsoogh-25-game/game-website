@@ -35,15 +35,23 @@ services:
       - "3000:3000"
     depends_on:
       - mysql_db
-      - redis_db # اطمینان از اینکه Redis قبل از برنامه اجرا می‌شود
+      - redis_db
     environment:
       DATABASE_URL: mysql://ligauk_user:ligauk_password@mysql_db:3306/ligauk_db
       SESSION_SECRET: 'a-very-strong-and-secret-key-for-sessions'
-      REDIS_HOST: 'redis_db' # آدرس سرویس Redis
+      REDIS_HOST: 'redis_db'
       REDIS_PORT: 6379
-    # ابتدا منتظر آماده شدن سرویس ردیس، سپس مای‌اس‌کیو‌ال و در نهایت اجرای برنامه
+    # --- START of EDIT: افزودن Volume برای پوشه آپلود ---
+    volumes:
+      # مسیر داخل کانتینر به یک Volume دائمی به نام app_uploads متصل می‌شود
+      # مسیر /usr/src/app/public/uploads مسیر استاندارد داخل کانتینر نود است
+      - app_uploads:/usr/src/app/public/uploads
+    # --- END of EDIT ---
     entrypoint: ["/usr/local/bin/wait-for-it.sh", "redis_db:6379", "--", "/usr/local/bin/wait-for-it.sh", "mysql_db:3306", "--", "pm2-runtime", "app.js", "-i", "max"]
 
+# --- START of EDIT: تعریف Volume جدید ---
 volumes:
   mysql_data:
-  redis_data: # Define the named volume for Redis data
+  redis_data:
+  app_uploads: # این Volume برای نگهداری دائمی فایل‌های آپلود شده است
+# --- END of EDIT ---

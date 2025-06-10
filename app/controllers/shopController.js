@@ -1,9 +1,16 @@
 // app/controllers/shopController.js
 const { Currency, Wallet, UniqueItem, Group, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { createClient } = require('redis');
 
-// تابع برای محاسبه قیمت لحظه‌ای (برای استفاده مجدد)
-async function calculateCurrencyPrice(currency, transaction) {
+const redisClient = createClient({
+  url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`
+});
+if (!redisClient.isOpen) {
+    redisClient.connect().catch(console.error);
+}
+
+async function updateAndBroadcastPrice(io, currency, transaction = null) {
   const totalOwnedResult = await Wallet.findOne({
     where: { currencyId: currency.id },
     attributes: [[sequelize.fn('SUM', sequelize.col('quantity')), 'total']],
@@ -12,25 +19,38 @@ async function calculateCurrencyPrice(currency, transaction) {
   });
   const totalOwned = parseFloat(totalOwnedResult.total) || 0;
   const price = currency.basePrice * (1 + (totalOwned * currency.priceCoefficient)) * currency.adminModifier;
-  // --- START of EDIT: گرد کردن به دو رقم اعشار ---
-  return parseFloat(price.toFixed(2));
-  // --- END of EDIT ---
+  const finalPrice = parseFloat(price.toFixed(2));
+
+  await redisClient.set(`price:currency:${currency.id}`, finalPrice, { EX: 3600 });
+
+  if (io) {
+    io.emit('priceUpdate', {
+      currencyId: currency.id,
+      newPrice: finalPrice
+    });
+  }
+  return finalPrice;
 }
+// تابع کمکی را export می‌کنیم تا در کنترلر ادمین هم قابل استفاده باشد
+exports.updateAndBroadcastPrice = updateAndBroadcastPrice;
 
 
 /**
  * GET /api/shop/data
- * → اطلاعات کلی فروشگاه برای نمایش به کاربر
+ * → اطلاعات کلی فروشگاه برای نمایش به کاربر (بهینه شده با Redis)
  */
 exports.getShopData = async (req, res) => {
   try {
     const currencies = await Currency.findAll({ order: [['name', 'ASC']] });
 
     const currencyData = await Promise.all(currencies.map(async (c) => {
-      const currentPrice = await calculateCurrencyPrice(c);
+      let currentPrice = await redisClient.get(`price:currency:${c.id}`);
+      if (currentPrice === null) {
+        currentPrice = await updateAndBroadcastPrice(req.app.get('io'), c);
+      }
       return {
         id: c.id, name: c.name, description: c.description,
-        image: c.image, currentPrice
+        image: c.image, currentPrice: parseFloat(currentPrice)
       };
     }));
 
@@ -84,11 +104,12 @@ exports.getMyAssets = async (req, res) => {
 
 /**
  * POST /api/shop/currencies/buy
- * → منطق خرید ارز
+ * → منطق خرید ارز (بهینه شده)
  */
 exports.buyCurrency = async (req, res) => {
     const { currencyId, amount } = req.body;
     const userId = req.session.userId;
+    const io = req.app.get('io');
   
     if (!currencyId || !amount || parseFloat(amount) <= 0) {
       return res.status(400).json({ message: 'شناسه ارز و مقدار معتبر الزامی است.' });
@@ -103,16 +124,14 @@ exports.buyCurrency = async (req, res) => {
       const currency = await Currency.findByPk(currencyId, { transaction: t });
       if (!currency) throw new Error('ارز مورد نظر یافت نشد.');
   
-      const price = await calculateCurrencyPrice(currency, t);
-      // --- START of EDIT: گرد کردن هزینه کل ---
+      const price = await updateAndBroadcastPrice(io, currency, t);
       const totalCost = parseFloat((price * parseFloat(amount)).toFixed(2));
-      // --- END of EDIT ---
   
       if (group.score < totalCost) {
         throw new Error('امتیاز گروه شما برای این خرید کافی نیست.');
       }
   
-      const [wallet, created] = await Wallet.findOrCreate({
+      const [wallet] = await Wallet.findOrCreate({
         where: { groupId: group.id, currencyId: currency.id },
         defaults: { quantity: 0 },
         transaction: t
@@ -126,8 +145,9 @@ exports.buyCurrency = async (req, res) => {
   
       await t.commit();
   
-      req.app.get('io').emit('shopUpdate');
-      req.app.get('io').emit('leaderboardUpdate');
+      // آپدیت نهایی قیمت و ارسال رویداد برای همه
+      await updateAndBroadcastPrice(io, currency);
+      io.emit('leaderboardUpdate');
   
       res.json({ success: true, message: 'خرید با موفقیت انجام شد.' });
   
@@ -136,16 +156,17 @@ exports.buyCurrency = async (req, res) => {
       console.error('Buy currency error:', err);
       res.status(500).json({ message: err.message || 'خطا در پردازش خرید' });
     }
-  };
+};
   
 
 /**
  * POST /api/shop/currencies/sell
- * → منطق فروش ارز
+ * → منطق فروش ارز (بهینه شده)
  */
 exports.sellCurrency = async (req, res) => {
     const { currencyId, amount } = req.body;
     const userId = req.session.userId;
+    const io = req.app.get('io');
 
     if (!currencyId || !amount || parseFloat(amount) <= 0) {
         return res.status(400).json({ message: 'شناسه ارز و مقدار معتبر الزامی است.' });
@@ -170,10 +191,8 @@ exports.sellCurrency = async (req, res) => {
             throw new Error('موجودی شما از این ارز کافی نیست.');
         }
         
-        const price = await calculateCurrencyPrice(currency, t);
-        // --- START of EDIT: گرد کردن سود فروش ---
+        const price = await updateAndBroadcastPrice(io, currency, t);
         const payout = parseFloat((price * parseFloat(amount)).toFixed(2));
-        // --- END of EDIT ---
 
         wallet.quantity -= parseFloat(amount);
         group.score += payout;
@@ -183,8 +202,9 @@ exports.sellCurrency = async (req, res) => {
 
         await t.commit();
 
-        req.app.get('io').emit('shopUpdate');
-        req.app.get('io').emit('leaderboardUpdate');
+        // آپدیت نهایی قیمت و ارسال رویداد برای همه
+        await updateAndBroadcastPrice(io, currency);
+        io.emit('leaderboardUpdate');
 
         res.json({ success: true, message: 'فروش با موفقیت انجام شد.' });
 
@@ -194,3 +214,5 @@ exports.sellCurrency = async (req, res) => {
         res.status(500).json({ message: err.message || 'خطا در پردازش فروش' });
     }
 };
+
+// تابع deleteCurrency از این فایل حذف شد و به adminShopController انتقال یافت.

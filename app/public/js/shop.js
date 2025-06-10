@@ -22,7 +22,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     } catch (err) {
       console.error('Error loading shop:', err);
-      shopContainer.innerHTML = `<p class="text-red-400 text-center col-span-full">خطا در بارگذاری فروشگاه.</p>`;
+      if (shopContainer) {
+        shopContainer.innerHTML = `<p class="text-red-400 text-center col-span-full">خطا در بارگذاری فروشگاه.</p>`;
+      }
     } finally {
       setLoadingState(false);
     }
@@ -68,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const userCurrency = myAssets.currencies.find(asset => asset.currencyId === c.id);
         const userQuantity = userCurrency ? userCurrency.quantity.toFixed(2) : '0.00';
 
-        // --- START of EDIT: اصلاح ظاهر کارت ارز ---
+        // --- START of EDIT ---
         return `
         <div class="shop-card bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col p-4 space-y-3"
              data-price="${c.currentPrice}" id="card-currency-${c.id}">
@@ -76,9 +78,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <img src="${c.image || 'https://via.placeholder.com/60'}" alt="${c.name}" class="w-12 h-12 rounded-full object-cover ml-4">
             <div>
               <h4 class="text-xl font-bold text-white">${c.name}</h4>
-              <p class="text-sm font-semibold text-green-400">۱ واحد = ${c.currentPrice.toFixed(2)} امتیاز</p>
+              <p class="text-sm font-semibold text-green-400" id="price-display-${c.id}">۱ واحد = ${c.currentPrice.toFixed(2)} امتیاز</p>
             </div>
           </div>
+
+          <p class="text-sm text-gray-400 border-t border-b border-gray-700 py-2">${c.description || 'توضیحات موجود نیست.'}</p>
+          
           <p class="text-xs text-gray-400">موجودی شما: ${userQuantity}</p>
           
           <div class="flex items-center space-x-2 space-x-reverse">
@@ -124,7 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
     shopContainer.innerHTML = html;
   }
   
-  // --- START of EDIT: اصلاح تابع محاسبه هزینه ---
   window.updateCosts = function(currencyId) {
     const card = document.getElementById(`card-currency-${currencyId}`);
     const amountInput = document.getElementById(`amount-currency-${currencyId}`);
@@ -139,7 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     totalCostEl.textContent = total.toFixed(2);
   }
-  // --- END of EDIT ---
   
   window.buyCurrency = async function(currencyId) {
     const amountInput = document.getElementById(`amount-currency-${currencyId}`);
@@ -204,9 +207,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // آپدیت لحظه‌ای با سوکت
   if (window.socket) {
+    // رویداد کلی برای رفرش کردن، مثلا بعد از خرید و فروش
     window.socket.on('shopUpdate', () => {
       if (document.querySelector('.content-section.active')?.id === 'shop') {
         loadShop();
+      }
+    });
+
+    // رویداد مخصوص برای آپدیت قیمت یک ارز خاص
+    window.socket.on('priceUpdate', ({ currencyId, newPrice }) => {
+      const card = document.getElementById(`card-currency-${currencyId}`);
+      if (card) {
+        card.dataset.price = newPrice;
+        const priceEl = document.getElementById(`price-display-${currencyId}`);
+        if (priceEl) {
+          priceEl.textContent = `۱ واحد = ${newPrice.toFixed(2)} امتیاز`;
+        }
+        updateCosts(currencyId);
+      }
+    });
+
+    // رویداد مخصوص برای حذف یک ارز از فروشگاه
+    window.socket.on('currencyDeleted', ({ currencyId }) => {
+      const card = document.getElementById(`card-currency-${currencyId}`);
+      if (card) {
+        card.style.transition = 'opacity 0.5s';
+        card.style.opacity = '0';
+        setTimeout(() => card.remove(), 500);
       }
     });
   }
