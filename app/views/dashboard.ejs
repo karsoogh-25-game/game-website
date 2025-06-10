@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/leaderboard.css"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* transition for sections */
     .content-section {
       opacity: 0;
       display: none;
@@ -17,7 +16,6 @@
       display: block;
       opacity: 1;
     }
-
     .alert-container {
       position: fixed;
       top: 10px;
@@ -27,7 +25,6 @@
       width: 90%;
       max-width: 500px;
     }
-
     .alert-box {
       display: flex;
       align-items: center;
@@ -37,21 +34,21 @@
       opacity: 0;
       transition: opacity 0.5s ease-out;
     }
-
     .alert-box.show {
       opacity: 1;
     }
-
     .alert-box .icon {
       margin-right: 10px;
     }
-
-    /* Additional styles to make sections fade in and fade out smoothly */
     .content-section.fade-out {
       opacity: 0 !important;
     }
     .content-section.fade-in {
       opacity: 1 !important;
+    }
+    /* برای جلوگیری از چشمک زدن اولیه منو، آیتم‌ها را در ابتدا مخفی می‌کنیم */
+    .menu-item {
+        display: none;
     }
   </style>
 </head>
@@ -63,7 +60,7 @@
     <div class="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
   </div>
 
-  <aside class="hidden md:flex flex-col w-64 bg-gray-900 border-l border-gray-800">
+  <aside id="desktop-menu" class="hidden md:flex flex-col w-64 bg-gray-900 border-l border-gray-800">
     <div class="h-16 flex items-center justify-center bg-gray-800">
       <i class="fas fa-chalkboard-teacher text-blue-400 text-2xl ml-2"></i>
       <span class="text-white font-bold text-lg">پنل دانش‌آموز</span>
@@ -75,20 +72,28 @@
              { id:'training',  label:'محتوای آموزشی', icon:'book' },
              { id:'groups',    label:'گروه‌بندی', icon:'users' },
              { id:'bank',      label:'بانک', icon:'university' },
-             { id:'shop',      label:'فروشگاه', icon:'store' }, // ID changed from 'store' to 'shop'
+             { id:'shop',      label:'فروشگاه', icon:'store' },
              { id:'scoreboard',label:'جدول امتیازات', icon:'list-ol' },
              { id:'announcements',label:'اطلاعیه‌ها', icon:'bullhorn' },
            ];
         %>
-        <% sections.forEach(s => {
-             if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
-        %>
-          <li>
-            <a href="#" class="menu-item flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
-              <i class="fas fa-<%= s.icon %> ml-3 text-blue-400"></i>
-              <span><%= s.label %></span>
-            </a>
-          </li>
+        <% sections.forEach(s => { %>
+            <% 
+              // --- START OF EDIT: اضافه کردن شرط برای نمایش منو ---
+              const featureName = 'menu_' + s.id;
+              // آیتم منو فقط در صورتی نمایش داده می‌شود که:
+              // 1. کاربر منتور نباشد یا اگر هست، این آیتم برای منتور مجاز باشد.
+              // 2. قابلیت مربوط به این منو در تنظیمات ادمین فعال باشد.
+              if ((user.role !== 'mentor' || ['dashboard','bank'].includes(s.id)) && featureFlags[featureName]) { 
+            %>
+              <li>
+                <a href="#" class="menu-item flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
+                  <i class="fas fa-<%= s.icon %> ml-3 text-blue-400"></i>
+                  <span><%= s.label %></span>
+                </a>
+              </li>
+            <% } %>
+            <% // --- END OF EDIT --- %>
         <% }) %>
       </ul>
     </nav>
@@ -104,15 +109,18 @@
     </div>
     <nav class="py-4 overflow-y-auto">
       <ul>
-        <% sections.forEach(s => {
-             if (user.role==='mentor' && !['dashboard','bank'].includes(s.id)) return;
-        %>
-          <li>
-            <a href="#" class="menu-item block px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
-              <i class="fas fa-<%= s.icon %> ml-3 text-blue-400"></i>
-              <span><%= s.label %></span>
-            </a>
-          </li>
+        <% sections.forEach(s => { %>
+            <% 
+              const featureName = 'menu_' + s.id;
+              if ((user.role !== 'mentor' || ['dashboard','bank'].includes(s.id)) && featureFlags[featureName]) { 
+            %>
+              <li>
+                <a href="#" class="menu-item block px-4 py-3 text-gray-300 hover:bg-gray-800" data-section="<%= s.id %>">
+                  <i class="fas fa-<%= s.icon %> ml-3 text-blue-400"></i>
+                  <span><%= s.label %></span>
+                </a>
+              </li>
+            <% } %>
         <% }) %>
       </ul>
     </nav>

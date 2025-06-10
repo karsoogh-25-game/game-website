@@ -1,22 +1,18 @@
-// app.js
-
 require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
 const http = require('http');
-const { createClient } = require('redis'); // ایمپورت کردن کلاینت Redis
-const { createAdapter } = require('@socket.io/redis-adapter'); // ایمپورت کردن آداپتور
+const { createClient } = require('redis');
+const { createAdapter } = require('@socket.io/redis-adapter');
 const socketIO = require('socket.io');
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
-// مدل‌های Admin و GroupMember برای استفاده در ادامه ایمپورت شده‌اند
-const { sequelize, Admin, GroupMember } = require('./models');
+const { sequelize, Admin, GroupMember, FeatureFlag } = require('./models');
 
 const app = express();
 const server = http.createServer(app);
 
-// تعریف Session Middleware
 const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'a-default-fallback-secret-for-development',
   store: new SequelizeStore({ db: sequelize }),
@@ -25,7 +21,6 @@ const sessionMiddleware = session({
   cookie: { maxAge: 24 * 60 * 60 * 1000 }
 });
 
-// ساخت سرور Socket.IO
 const io = socketIO(server, {
   cors: {
     origin: true,
@@ -33,46 +28,35 @@ const io = socketIO(server, {
   }
 });
 
-// به اشتراک‌گذاری Session Middleware با Express و Socket.IO
 app.use(sessionMiddleware);
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
 
-// ======================= REDIS ADAPTER SETUP =======================
-// این تابع آداپتور را به Socket.IO متصل می‌کند
 async function setupRedisAdapter() {
   const pubClient = createClient({ url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}` });
   const subClient = pubClient.duplicate();
 
-  // منتظر اتصال هر دو کلاینت به ردیس می‌مانیم
   await Promise.all([pubClient.connect(), subClient.connect()]);
 
-  // آداپتور را به نمونه اصلی io متصل می‌کنیم
   io.adapter(createAdapter(pubClient, subClient));
   console.log('Socket.IO Redis adapter connected successfully.');
 }
 
-// اجرای تابع برای فعال‌سازی آداپتور و مدیریت خطا
 setupRedisAdapter().catch(err => {
   console.error('FATAL: Failed to connect Redis adapter:', err);
-  process.exit(1); // در صورت عدم اتصال، برنامه را متوقف می‌کنیم
+  process.exit(1);
 });
-// ===================== END REDIS ADAPTER SETUP =====================
 
-// ———— make io available in controllers ————
 app.set('io', io);
 
-// ————— View engine & static files —————
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ————— Body parsers —————
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ————— Middlewares —————
 function isAdmin(req, res, next) {
   if (req.session.adminId) return next();
   res.redirect('/');
@@ -82,7 +66,6 @@ function isUser(req, res, next) {
   res.redirect('/');
 }
 
-// ————— Routes —————
 app.get('/', (req, res) => res.render('auth'));
 app.use('/', require('./routes/auth'));
 
@@ -109,21 +92,33 @@ app.use('/admin/api/unique-items', isAdmin, adminUniqueItemsRouter);
 const shopRouter = require('./routes/shop');
 app.use('/api/shop', isUser, shopRouter);
 
-// --- START of EDIT: افزودن روت جدید برای خرید و فروش آیتم‌های خاص ---
 const shopUniqueItemsRouter = require('./routes/shopUniqueItems');
 app.use('/api/shop/unique-items', isUser, shopUniqueItemsRouter);
-// --- END of EDIT ---
 
 const groupRoutes = require('./routes/group');
 app.use('/api/groups', isUser, groupRoutes);
 app.use('/dashboard', isUser, require('./routes/user'));
 
+app.get('/api/features/initial', isUser, async (req, res) => {
+    try {
+        const allFlags = await FeatureFlag.findAll({
+            attributes: ['name', 'isEnabled']
+        });
+        const flagsObject = allFlags.reduce((acc, flag) => {
+            acc[flag.name] = flag.isEnabled;
+            return acc;
+        }, {});
+        res.json(flagsObject);
+    } catch (err) {
+        console.error("Error fetching initial feature flags:", err);
+        res.status(500).json({ message: "خطا در دریافت تنظیمات اولیه" });
+    }
+});
 
-// ————— Socket.IO Room Management (اصلاح شده برای امنیت بیشتر) —————
+
 io.on('connection', socket => {
   console.log(`Socket connected: ${socket.id}`);
 
-  // فقط ادمین‌ها می‌توانند به این اتاق ملحق شوند
   socket.on('joinAdminRoom', () => {
     if (socket.request.session.adminId) {
       socket.join('admins');
@@ -131,26 +126,21 @@ io.on('connection', socket => {
     }
   });
 
-  // کاربر برای پیوستن به اتاق گروه، باید عضو آن گروه باشد
   socket.on('joinGroupRoom', async (groupId) => {
     const userId = socket.request.session.userId;
 
     if (userId && groupId) {
       try {
-        // بررسی می‌کنیم آیا رکوردی برای عضویت این کاربر در این گروه وجود دارد یا خیر
         const membership = await GroupMember.findOne({
           where: {
             userId: userId,
             groupId: groupId
           }
         });
-
-        // فقط در صورتی که کاربر عضو بود، او را به اتاق اضافه کن
         if (membership) {
           socket.join(`group-${groupId}`);
           console.log(`Socket ${socket.id} joined secure room: group-${groupId}`);
         } else {
-          // اگر کاربر عضو نبود، یک هشدار در لاگ سرور ثبت کن
           console.warn(`Unauthorized attempt by socket ${socket.id} to join room: group-${groupId}`);
         }
       } catch (error) {
@@ -159,7 +149,6 @@ io.on('connection', socket => {
     }
   });
   
-  // برای خروج از اتاق، نیازی به اعتبارسنجی نیست
   socket.on('leaveGroupRoom', (groupId) => {
     if (groupId) {
       socket.leave(`group-${groupId}`);
@@ -172,7 +161,6 @@ io.on('connection', socket => {
   });
 });
 
-// ————— Seed & Start —————
 async function seedAdmin() {
   const exists = await Admin.findOne({ where: { phoneNumber: '09912807001' } });
   if (!exists) {
@@ -180,9 +168,32 @@ async function seedAdmin() {
   }
 }
 
+async function seedFeatureFlags() {
+  const features = [
+    { name: 'menu_dashboard', displayName: 'منوی داشبورد', isEnabled: true, category: 'menu' },
+    { name: 'menu_groups', displayName: 'منوی گروه من', isEnabled: true, category: 'menu' },
+    { name: 'menu_scoreboard', displayName: 'منوی جدول امتیازات', isEnabled: true, category: 'menu' },
+    { name: 'menu_shop', displayName: 'منوی فروشگاه', isEnabled: true, category: 'menu' },
+    { name: 'menu_bank', displayName: 'منوی بانک', isEnabled: true, category: 'menu' },
+    { name: 'menu_training', displayName: 'منوی آموزش‌ها', isEnabled: true, category: 'menu' },
+    { name: 'menu_announcements', displayName: 'منوی اطلاعیه‌ها', isEnabled: true, category: 'menu' },
+    { name: 'action_group_leave', displayName: 'عملیات خروج از گروه', isEnabled: true, category: 'action' },
+    { name: 'action_group_delete', displayName: 'عملیات حذف گروه (توسط سرگروه)', isEnabled: true, category: 'action' }
+  ];
+
+  for (const feature of features) {
+    await FeatureFlag.findOrCreate({
+      where: { name: feature.name },
+      defaults: feature
+    });
+  }
+  console.log('Feature flags seeded successfully.');
+}
+
 sequelize.sync().then(async () => {
   console.log('Database synced successfully.');
   await seedAdmin();
+  await seedFeatureFlags();
   const port = process.env.PORT || 3000;
   server.listen(port, () => console.log(`Server is listening on port ${port}`));
 }).catch(err => {

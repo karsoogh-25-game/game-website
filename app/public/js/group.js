@@ -166,32 +166,44 @@ document.addEventListener('DOMContentLoaded', function(){
         </table>
 
         <div class="flex justify-center space-x-4">
-          <button id="btn-leave" class="btn-secondary px-3 py-1 text-sm mx-2">خروج</button>
-          ${role==='leader' ? `<button id="btn-delete" class="btn-primary px-3 py-1 text-sm mx-2">حذف</button>` : ``}
+          ${
+            window.isFeatureEnabled('action_group_leave') 
+            ? `<button id="btn-leave" class="btn-secondary px-3 py-1 text-sm mx-2">خروج</button>` 
+            : ''
+          }
+          ${
+            role === 'leader' && window.isFeatureEnabled('action_group_delete') 
+            ? `<button id="btn-delete" class="btn-primary px-3 py-1 text-sm mx-2">حذف</button>` 
+            : ''
+          }
         </div>
         <p id="group-error" class="error text-center"></p>
       </div>`;
 
-    // عملیات خروج و حذف
-    document.getElementById('btn-leave').onclick = async () => {
-      sendConfirmationNotification('confirm', 'آیا مطمئن هستید که می‌خواهید از گروه خارج شوید؟', async (confirmed) => {
-        if (confirmed) {
-          try {
-            await axios.post('/api/groups/leave',{ groupId:g.id });
-            loadMyGroup();
-            sendNotification('info', 'از گروه خارج شدید');
-          } catch (e) {
-            document.getElementById('group-error').innerText = e.response.data.message;
-            sendNotification('error', 'خطا در خروج از گروه');
+    // --- START OF EDIT: افزودن Event Listenerها فقط در صورتی که دکمه‌ها وجود داشته باشند ---
+    const btnLeave = document.getElementById('btn-leave');
+    if (btnLeave) {
+      btnLeave.onclick = async () => {
+        sendConfirmationNotification('confirm', 'آیا مطمئن هستید که می‌خواهید از گروه خارج شوید؟', async (confirmed) => {
+          if (confirmed) {
+            try {
+              await axios.post('/api/groups/leave',{ groupId:g.id });
+              loadMyGroup();
+              sendNotification('info', 'از گروه خارج شدید');
+            } catch (e) {
+              document.getElementById('group-error').innerText = e.response.data.message;
+              sendNotification('error', 'خطا در خروج از گروه');
+            }
+          } else {
+            sendNotification('info', 'خروج از گروه لغو شد');
           }
-        } else {
-          sendNotification('info', 'خروج از گروه لغو شد');
-        }
-      });
-    };
+        });
+      };
+    }
 
-    if(role==='leader'){
-      document.getElementById('btn-delete').onclick = () => {
+    const btnDelete = document.getElementById('btn-delete');
+    if (btnDelete) {
+      btnDelete.onclick = () => {
         sendConfirmationNotification('confirm', 'آیا مطمئن هستید که می‌خواهید این گروه را حذف کنید؟', async (confirmed) => {
           if (confirmed) {
             try {
@@ -208,27 +220,9 @@ document.addEventListener('DOMContentLoaded', function(){
         });
       };
     }
+    // --- END OF EDIT ---
   }
 
-  // منطق انتقال امتیاز
-  async function doTransfer(){
-    const code = document.getElementById('bank-target-code').value;
-    const amount = document.getElementById('bank-amount').value;
-    setLoadingState(true);
-    try {
-      await axios.post('/api/groups/transfer', { targetCode:code, amount });
-      sendNotification('success','انتقال با موفقیت انجام شد');
-      loadMyGroup();
-    } catch(e) {
-      const msg = e.response?.data?.message || e.message;
-      document.getElementById('group-error').textContent = msg;
-      sendNotification('error','خطا در انتقال: '+msg);
-    } finally {
-      setLoadingState(false);
-    }
-  }
-
-  // فرم انتقال برای منتور
   function renderMentorBank(){
     groupArea.innerHTML = `
       <div class="bg-gray-700 rounded-lg p-6 text-center max-w-md mx-auto">
@@ -241,6 +235,17 @@ document.addEventListener('DOMContentLoaded', function(){
   window.socket.on('memberRemoved', loadMyGroup);
   window.socket.on('groupDeleted', renderNotMember);
   window.socket.on('bankUpdate', loadMyGroup);
+
+  // --- START OF EDIT: گوش دادن به آپدیت قابلیت‌ها ---
+  document.addEventListener('feature-flags-loaded', () => {
+    // اگر کاربر در حال مشاهده صفحه گروه است، آن را دوباره رندر کن تا دکمه‌ها آپدیت شوند.
+    const activeSection = document.querySelector('.content-section.active');
+    if (activeSection && activeSection.id === 'groups') {
+      loadMyGroup();
+    }
+  });
+  // --- END OF EDIT ---
+
 
   // Notifications button handler
   document.getElementById('btn-notifications').addEventListener('click', e=>{

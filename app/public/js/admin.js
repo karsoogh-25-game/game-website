@@ -8,7 +8,8 @@ new Vue({
     adminGroupsMixin,
     adminContentsMixin,
     shopAdminMixin, // برای ارزها
-    adminUniqueItemsMixin // --- START of EDIT: میکسین جدید برای آیتم‌های خاص ---
+    adminUniqueItemsMixin,
+    adminFeaturesMixin // میکسین جدید برای مدیریت رویدادها
   ],
   data: {
     editingId: null, // این فیلد ممکن است بین mixinها مشترک باشد، پس در سطح اصلی می‌ماند
@@ -19,7 +20,8 @@ new Vue({
       { key: 'announcements', label: 'اطلاعیه‌ها' },
       { key: 'groups', label: 'گروه‌ها' },
       { key: 'items', label: 'فروشگاه' },
-      { key: 'contents', label: 'محتواها' }
+      { key: 'contents', label: 'محتواها' },
+      { key: 'features', label: 'مدیریت رویدادها' } // بخش جدید
     ]
   },
   created() {
@@ -49,6 +51,13 @@ new Vue({
     window.socket.on('contentCreated', () => this.activeSection === 'contents' && this.fetchTraining());
     window.socket.on('contentUpdated', () => this.activeSection === 'contents' && this.fetchTraining());
     window.socket.on('contentDeleted', () => this.activeSection === 'contents' && this.fetchTraining());
+    
+    // لیسنر برای آپدیت لحظه‌ای قابلیت‌ها
+    window.socket.on('featureFlagsUpdated', () => {
+        if (this.activeSection === 'features') {
+            this.fetchFeatureFlags();
+        }
+    });
     
     // اولین بارگذاری اطلاعات
     this.loadSection();
@@ -105,9 +114,10 @@ new Vue({
             case 'contents': await this.fetchTraining(); break;
             case 'items':
                 await this.fetchCurrencies();
-                // --- START of EDIT: فعال کردن فراخوانی آیتم‌های خاص ---
                 await this.fetchUniqueItems();
-                // --- END of EDIT ---
+                break;
+            case 'features':
+                await this.fetchFeatureFlags();
                 break;
         }
         this.setLoadingState(false);

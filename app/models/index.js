@@ -3,26 +3,19 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const path = require('path');
 
-// --- کد جدید برای اتصال به دیتابیس از طریق URL ---
-// این کد آدرس دیتابیس را از متغیر محیطی که در docker-compose.yml تعریف کردیم می‌خواند.
-// این روش بسیار امن‌تر و انعطاف‌پذیرتر است.
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: 'mysql', // به سادگی به Sequelize می‌گوییم که با MySQL کار کند
-  logging: false,   // لاگ‌های SQL را برای تمیز بودن خروجی در محیط پروداکشن غیرفعال می‌کنیم
+  dialect: 'mysql',
+  logging: false,
   dialectOptions: {
-    // این گزینه برای اطمینان از سازگاری با نسخه‌های مختلف MySQL مفید است
     connectTimeout: 60000
   },
-  // START of EDIT: اضافه کردن تنظیمات استخر اتصالات برای بهینه‌سازی
   pool: {
-    max: 15,      // حداکثر تعداد اتصالات همزمان در استخر
-    min: 5,       // حداقل تعداد اتصالات باز در استخر
-    acquire: 30000, // حداکثر زمان (میلی‌ثانیه) برای گرفتن یک اتصال قبل از بروز خطا
-    idle: 10000     // حداکثر زمان (میلی‌ثانیه) که یک اتصال می‌تواند بیکار بماند قبل از بسته شدن
+    max: 15,
+    min: 5,
+    acquire: 30000,
+    idle: 10000
   }
-  // END of EDIT
 });
-// ------------------------------------------------
 
 const db = {
   sequelize,
@@ -30,7 +23,6 @@ const db = {
 };
 
 // load each model, passing both sequelize instance and DataTypes
-// این بخش بدون هیچ تغییری باقی می‌ماند، چون Sequelize کار ترجمه را انجام می‌دهد
 db.User                    = require('./user')(sequelize, DataTypes);
 db.Admin                   = require('./admin')(sequelize, DataTypes);
 db.Group                   = require('./group')(sequelize, DataTypes);
@@ -39,12 +31,12 @@ db.Announcement            = require('./announcement')(sequelize, DataTypes);
 db.AnnouncementAttachment  = require('./announcementAttachment')(sequelize, DataTypes);
 db.Content                 = require('./content')(sequelize, DataTypes);
 db.ContentAttachment       = require('./contentAttachment')(sequelize, DataTypes);
-db.Currency    = require('./currency')(sequelize, DataTypes);
-db.Wallet      = require('./wallet')(sequelize, DataTypes);
-db.UniqueItem  = require('./uniqueItem')(sequelize, DataTypes);
+db.Currency                = require('./currency')(sequelize, DataTypes);
+db.Wallet                  = require('./wallet')(sequelize, DataTypes);
+db.UniqueItem              = require('./uniqueItem')(sequelize, DataTypes);
+db.FeatureFlag             = require('./featureFlag')(sequelize, DataTypes);
 
 // set up associations
-// این بخش هم بدون تغییر باقی می‌ماند
 Object.values(db).forEach(model => {
   if (typeof model.associate === 'function') {
     model.associate(db);
