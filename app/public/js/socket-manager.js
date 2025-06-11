@@ -68,4 +68,18 @@
     }, 1500); 
   });
 
+  // --- START OF EDIT: اضافه کردن لیسنر برای نوتیفیکیشن رادیو ---
+  socket.on('radio-started', () => {
+    // اگر در صفحه ادمین هستیم، نوتیفیکیشن را نمایش نده
+    if (window.location.pathname.startsWith('/admin')) {
+        return;
+    }
+    
+    // اگر تابع نوتیفیکیشن در دسترس بود، آن را اجرا کن
+    if (typeof sendNotification === 'function') {
+        sendNotification('info', 'پخش زنده رادیو شروع شد! برای شنیدن به بخش رادیو بروید.');
+    }
+  });
+  // --- END OF EDIT ---
+
 })();

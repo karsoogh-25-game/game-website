@@ -75,15 +75,12 @@
              { id:'shop',      label:'فروشگاه', icon:'store' },
              { id:'scoreboard',label:'جدول امتیازات', icon:'list-ol' },
              { id:'announcements',label:'اطلاعیه‌ها', icon:'bullhorn' },
+             { id:'radio',     label:'رادیو', icon:'broadcast-tower' }
            ];
         %>
         <% sections.forEach(s => { %>
             <% 
-              // --- START OF EDIT: اضافه کردن شرط برای نمایش منو ---
               const featureName = 'menu_' + s.id;
-              // آیتم منو فقط در صورتی نمایش داده می‌شود که:
-              // 1. کاربر منتور نباشد یا اگر هست، این آیتم برای منتور مجاز باشد.
-              // 2. قابلیت مربوط به این منو در تنظیمات ادمین فعال باشد.
               if ((user.role !== 'mentor' || ['dashboard','bank'].includes(s.id)) && featureFlags[featureName]) { 
             %>
               <li>
@@ -93,7 +90,6 @@
                 </a>
               </li>
             <% } %>
-            <% // --- END OF EDIT --- %>
         <% }) %>
       </ul>
     </nav>
@@ -183,7 +179,8 @@
         </div>
       </section>
         
-    </main>
+      <section id="radio" class="content-section p-4"></section>
+      </main>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -199,5 +196,6 @@
   <script src="/js/bank.js"></script>
   <script src="/js/leaderboard.js"></script>
   <script src="/js/shop.js"></script>
+  <script src="/js/radio-listener.js"></script>
   </body>
 </html>

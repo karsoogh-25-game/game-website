@@ -9,7 +9,8 @@ new Vue({
     adminContentsMixin,
     shopAdminMixin, // برای ارزها
     adminUniqueItemsMixin,
-    adminFeaturesMixin // میکسین جدید برای مدیریت رویدادها
+    adminFeaturesMixin, // میکسین جدید برای مدیریت رویدادها
+    adminRadioMixin     // --- میکس‌این جدید رادیو اضافه شد ---
   ],
   data: {
     editingId: null, // این فیلد ممکن است بین mixinها مشترک باشد، پس در سطح اصلی می‌ماند
@@ -21,7 +22,8 @@ new Vue({
       { key: 'groups', label: 'گروه‌ها' },
       { key: 'items', label: 'فروشگاه' },
       { key: 'contents', label: 'محتواها' },
-      { key: 'features', label: 'مدیریت رویدادها' } // بخش جدید
+      { key: 'features', label: 'مدیریت رویدادها' },
+      { key: 'radio', label: 'رادیو' } // --- بخش جدید رادیو اضافه شد ---
     ]
   },
   created() {
@@ -69,16 +71,11 @@ new Vue({
   methods: {
     // متدهای عمومی و مشترک
     selectSection(key) {
-      const current = document.querySelector('.content-section.active');
-      if (current && current.id !== key) {
-        current.classList.replace('fade-in', 'fade-out');
-        current.addEventListener('transitionend', () => {
-          current.classList.remove('active', 'fade-out');
-          this.activeSection = key;
-        }, { once: true });
-      } else {
-        this.activeSection = key;
-      }
+      // --- START OF FIX ---
+      // متد را ساده‌سازی می‌کنیم تا فقط وضعیت را عوض کند
+      // watcher بقیه کارها را به صورت خودکار انجام می‌دهد
+      this.activeSection = key;
+      // --- END OF FIX ---
     },
     setLoadingState(on) {
       const el = document.getElementById('loading-spinner');
@@ -106,6 +103,8 @@ new Vue({
         if (!this.activeSection) return;
         this.setLoadingState(true);
         // فراخوانی متد مربوط به هر بخش
+        // --- START OF FIX ---
+        // کیس 'radio' به سوییچ اضافه شد
         switch(this.activeSection) {
             case 'users': await this.fetchUsers(); break;
             case 'mentors': await this.fetchMentors(); break;
@@ -119,7 +118,11 @@ new Vue({
             case 'features':
                 await this.fetchFeatureFlags();
                 break;
+            case 'radio':
+                // بخش رادیو نیازی به بارگذاری داده اولیه ندارد
+                break;
         }
+        // --- END OF FIX ---
         this.setLoadingState(false);
     }
   },
