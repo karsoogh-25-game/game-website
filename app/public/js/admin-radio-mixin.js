@@ -9,9 +9,8 @@ const adminRadioMixin = {
     audioContext: null,
     scriptNode: null,
     
-    // --- START OF EDIT: آبجکت جدید برای افکت ---
+    // --- آبجکت جدید برای افکت ---
     pitchShifter: null, // آبجکت کتابخانه Soundtouch
-    // --- END OF EDIT ---
 
     // --- بافر ارسال ---
     sendBuffer: [],
@@ -21,7 +20,7 @@ const adminRadioMixin = {
     VAD_THRESHOLD: 0.02,
     BUFFER_SIZE: 4096,
     // --- START OF EDIT: تغییر بازه زمانی ---
-    SEND_INTERVAL_MS: 500, // بازه زمانی به نیم ثانیه افزایش یافت
+    SEND_INTERVAL_MS: 3000,
     // --- END OF EDIT ---
   },
   methods: {
@@ -88,7 +87,7 @@ const adminRadioMixin = {
       this.sendNotification('info', 'پخش زنده متوقف شد.');
     },
 
-    // --- START OF EDIT: تابع پردازش صدا با افکت جدید ---
+    // --- تابع پردازش صدا با افکت جدید ---
     processAudio(e) {
       const input = e.inputBuffer.getChannelData(0);
       let processedSamples = input;
@@ -122,7 +121,6 @@ const adminRadioMixin = {
           }
       }
     },
-    // --- END OF EDIT ---
     
     // --- تابع ارسال بسته‌ها ---
     sendAudioChunks() {
@@ -146,7 +144,7 @@ const adminRadioMixin = {
       window.socket.emit('audio-stream', { buffer: int16.buffer });
     },
 
-    // --- START OF EDIT: متد فعال/غیرفعال کردن افکت ساده‌سازی شد ---
+    // --- متد فعال/غیرفعال کردن افکت ساده‌سازی شد ---
     toggleVoiceEffect() {
       if (!this.isBroadcasting) return;
       this.isEffectOn = !this.isEffectOn;
