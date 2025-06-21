@@ -1,20 +1,26 @@
-// app/public/js/admin-radio-mixin.js
+// app/public/js/admin-radio-mixin.js (نسخه نهایی با افکت داخلی و پایدار Web Audio API)
 
 const adminRadioMixin = {
   data: {
     // --- وضعیت‌های مربوط به رادیو ---
     isBroadcasting: false,
-    isEffectOn: false,    
-    
+    isEffectOn: false,
+
     // --- آبجکت‌های Web Audio API ---
     localStream: null,
     audioContext: null,
     scriptNode: null,
-    
-    // --- آبجکت جدید برای افکت ---
-    pitchShifter: null, // آبجکت کتابخانه Soundtouch
+    sourceNode: null, // نود منبع را در دیتا ذخیره می‌کنیم تا بتوانیم اتصالش را تغییر دهیم
 
-    // --- بافر ارسال ---
+    // --- START OF EDIT: آبجکت‌های جدید برای افکت داخلی مرورگر ---
+    effectBiquadFilter: null,  // افکت جدید برای بم کردن صدا
+    effectRingModulator: {     // افکت قبلی برای حالت روباتیک
+      carrier: null,
+      modulator: null,
+    },
+    // --- END OF EDIT ---
+
+    // --- بافر ارسال (منطق اصلی شما حفظ شده) ---
     sendBuffer: [],
     sendInterval: null,
 
@@ -35,7 +41,7 @@ const adminRadioMixin = {
 
     // --- متد برای شروع پخش ---
     async startBroadcast() {
-      if (this.localStream) return; // جلوگیری از اجرای دوباره
+      if (this.localStream) return;
       try {
         // ۱. گرفتن دسترسی به میکروفون
         this.localStream = await navigator.mediaDevices.getUserMedia({
@@ -44,11 +50,24 @@ const adminRadioMixin = {
 
         // ۲. راه‌اندازی Web Audio API
         this.audioContext = new AudioContext({ sampleRate: 48000 });
-        const sourceNode = this.audioContext.createMediaStreamSource(this.localStream);
+        this.sourceNode = this.audioContext.createMediaStreamSource(this.localStream);
         this.scriptNode = this.audioContext.createScriptProcessor(this.BUFFER_SIZE, 1, 1);
-        
-        // ۳. اتصال گراف صوتی
-        sourceNode.connect(this.scriptNode);
+
+        // --- START OF EDIT: ساخت اجزای افکت ترکیبی (بم و روباتیک) ---
+        // فیلتر پایین گذر برای بم شدن صدا
+        this.effectBiquadFilter = this.audioContext.createBiquadFilter();
+        this.effectBiquadFilter.type = 'lowpass';
+        this.effectBiquadFilter.frequency.value = 800; // فرکانس‌های بالای ۸۰۰ هرتز حذف می‌شوند تا صدا بم شود
+
+        // مدولاتور حلقه‌ای برای صدای روباتیک
+        this.effectRingModulator.modulator = this.audioContext.createGain();
+        this.effectRingModulator.carrier = this.audioContext.createOscillator();
+        this.effectRingModulator.carrier.frequency.value = 60; // فرکانس پایین برای افکت بم‌تر
+        this.effectRingModulator.carrier.start();
+        // --- END OF EDIT ---
+
+        // ۳. اتصال گراف صوتی اولیه (بدون افکت)
+        this.sourceNode.connect(this.scriptNode);
         this.scriptNode.connect(this.audioContext.destination); // تا ادمین صدای خود را بشنود
 
         // ۴. تنظیم تابع پردازش صدا
@@ -79,7 +98,10 @@ const adminRadioMixin = {
       // ریست کردن تمام متغیرها
       this.localStream = null;
       this.audioContext = null;
-      this.pitchShifter = null; // ریست کردن افکت
+      this.scriptNode = null;
+      this.sourceNode = null;
+      this.effectBiquadFilter = null; // پاک کردن افکت بم‌کننده
+      this.effectRingModulator = { carrier: null, modulator: null }; // پاک کردن افکت روباتیک
       this.sendBuffer = [];
       this.isBroadcasting = false;
       this.isEffectOn = false;
@@ -87,31 +109,11 @@ const adminRadioMixin = {
       this.sendNotification('info', 'پخش زنده متوقف شد.');
     },
 
-    // --- تابع پردازش صدا با افکت جدید ---
+    // --- تابع پردازش صدا (کاملا بدون تغییر) ---
     processAudio(e) {
       const input = e.inputBuffer.getChannelData(0);
       let processedSamples = input;
-
-      // اگر افکت فعال بود، بافر صدا را با کتابخانه پردازش کن
-      if (this.isEffectOn) {
-        if (!this.pitchShifter) {
-          // --- START OF EDIT: استفاده از پیشوند `soundtouch.` به حالت صحیح بازگردانده شد ---
-          this.pitchShifter = new soundtouch.PitchShifter(this.audioContext.sampleRate, 0.6);
-          // --- END OF EDIT ---
-        }
-        // ساخت بافر ورودی برای کتابخانه
-        const soundtouchBuffer = {
-            numChannels: 1,
-            sampleRate: this.audioContext.sampleRate,
-            length: input.length,
-            getChannelData: () => input,
-        };
-        // پردازش و گرفتن خروجی
-        this.pitchShifter.process(soundtouchBuffer);
-        processedSamples = this.pitchShifter.extract();
-      }
       
-      // VAD روی صدای پردازش شده (یا اصلی) اعمال می‌شود
       if (processedSamples && processedSamples.length > 0) {
           let maxAmp = 0;
           for (let i = 0; i < processedSamples.length; i++) {
@@ -123,7 +125,7 @@ const adminRadioMixin = {
       }
     },
     
-    // --- تابع ارسال بسته‌ها ---
+    // --- تابع ارسال بسته‌ها (کاملا بدون تغییر) ---
     sendAudioChunks() {
       if (!this.sendBuffer.length) return;
 
@@ -145,16 +147,26 @@ const adminRadioMixin = {
       window.socket.emit('audio-stream', { buffer: int16.buffer });
     },
 
-    // --- متد فعال/غیرفعال کردن افکت ساده‌سازی شد ---
+    // --- متد فعال/غیرفعال کردن افکت (با استفاده از نودهای داخلی) ---
     toggleVoiceEffect() {
       if (!this.isBroadcasting) return;
+      
       this.isEffectOn = !this.isEffectOn;
       
+      // قطع تمام اتصالات قبلی از منبع اصلی صدا
+      this.sourceNode.disconnect();
+
       if (this.isEffectOn) {
-        this.sendNotification('info', 'افکت صدا فعال شد.');
+        // مسیر جدید: میکروفون -> فیلتر بم کننده -> افکت روباتیک -> پردازشگر
+        this.sourceNode.connect(this.effectBiquadFilter);
+        this.effectBiquadFilter.connect(this.effectRingModulator.modulator);
+        this.effectRingModulator.carrier.connect(this.effectRingModulator.modulator.gain);
+        this.effectRingModulator.modulator.connect(this.scriptNode);
+        
+        this.sendNotification('info', 'افکت صدای هکری فعال شد.');
       } else {
-        // با خاموش شدن افکت، نمونه ساخته شده را پاک می‌کنیم تا پردازش اضافی انجام نشود
-        this.pitchShifter = null; 
+        // مسیر اصلی: میکروفون -> پردازشگر
+        this.sourceNode.connect(this.scriptNode);
         this.sendNotification('info', 'افکت صدا غیرفعال شد.');
       }
     }

@@ -89,9 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function forceFlushBuffer() {
     if (isBuffering && audioQueue.length > 0) {
       console.log('Inactivity detected. Forcing playback for stranded packets.');
-      // --- START OF EDIT: نوتیفیکیشن حذف شد ---
-      // sendNotification('info', 'عبارت کوتاه پخش می‌شود...');
-      // --- END OF EDIT ---
       isBuffering = false;
       playNextInQueue();
     }
