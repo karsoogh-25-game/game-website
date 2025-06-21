@@ -1,3 +1,5 @@
+// app/public/js/radio-listener.js
+
 document.addEventListener('DOMContentLoaded', () => {
   // --- State Management ---
   let isRadioOn = false;
@@ -7,14 +9,26 @@ document.addEventListener('DOMContentLoaded', () => {
   let isPlaying = false;
   let nextPlayTime = 0;
 
+  // --- متغیرهای جدید برای منطق پیشرفته ---
+  let isBuffering = true;
+  const PACKETS_TO_BUFFER = 4;
+  let inactivityTimer = null;
+  const INACTIVITY_TIMEOUT_MS = 1200;
+
   // --- UI Elements ---
   const radioSection = document.getElementById('radio');
-  const btnRefresh = document.getElementById('btn-refresh'); // گرفتن دکمه رفرش
+  const btnRefresh = document.getElementById('btn-refresh');
   let radioToggleBtn, radioStatusText;
 
-  // --- START OF EDIT: بازنویسی کامل منطق بارگذاری ---
+  // تابع loadRadio برای بارگذاری اولیه UI و وضعیت
+  function loadRadio() {
+    if (!radioToggleBtn) {
+      initializeUI();
+    }
+    fetchAndUpdateStatus();
+  }
 
-  // این تابع وضعیت فعلی را از سرور می‌پرسد و UI را آپدیت می‌کند
+  // استعلام وضعیت از سرور
   function fetchAndUpdateStatus() {
     setLoadingState(true);
     window.socket.emit('get-radio-status', (isLive) => {
@@ -27,17 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // این تابع اصلی است که هنگام کلیک روی تب یا رفرش اجرا می‌شود
-  function loadRadio() {
-    // UI فقط بار اول ساخته می‌شود
-    if (!radioToggleBtn) {
-      initializeUI();
-    }
-    // اما وضعیت همیشه از سرور استعلام می‌شود
-    fetchAndUpdateStatus();
-  }
-  // --- END OF EDIT ---
-
+  // ایجاد UI رادیو
   function initializeUI() {
     if (!radioSection) return;
     radioSection.innerHTML = `
@@ -51,20 +55,28 @@ document.addEventListener('DOMContentLoaded', () => {
     radioStatusText = document.getElementById('radio-status-text');
     radioToggleBtn.addEventListener('click', toggleRadio);
   }
-  
-  // --- Core Functions (بدون تغییر) ---
+
+  // --- تابع اصلی روشن/خاموش کردن رادیو ---
   function toggleRadio() {
     if (!isBroadcastLive) return;
     isRadioOn = !isRadioOn;
+
     if (isRadioOn) {
       if (!audioContext || audioContext.state === 'closed') {
         audioContext = new AudioContext({ sampleRate: 48000 });
         nextPlayTime = audioContext.currentTime;
       }
+      
+      audioQueue.length = 0;
+      isBuffering = true;
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      inactivityTimer = null;
+
       window.socket.emit('join-radio');
-      playNextInQueue();
       updateButtonUI();
+      // --- START OF EDIT: نوتیفیکیشن ساده‌سازی شد ---
       sendNotification('success', 'رادیو روشن شد.');
+      // --- END OF EDIT ---
     } else {
       window.socket.emit('leave-radio');
       audioQueue.length = 0;
@@ -73,8 +85,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- تابع جدید برای تخلیه اجباری بافر ---
+  function forceFlushBuffer() {
+    if (isBuffering && audioQueue.length > 0) {
+      console.log('Inactivity detected. Forcing playback for stranded packets.');
+      // --- START OF EDIT: نوتیفیکیشن حذف شد ---
+      // sendNotification('info', 'عبارت کوتاه پخش می‌شود...');
+      // --- END OF EDIT ---
+      isBuffering = false;
+      playNextInQueue();
+    }
+  }
+
+  // --- تابع اصلی پخش با منطق نهایی ---
   function playNextInQueue() {
-    if (isPlaying || !audioQueue.length || !isRadioOn) return;
+    if (isPlaying || !audioQueue.length || !isRadioOn) {
+      return;
+    }
+
+    if (isBuffering) {
+      if (audioQueue.length >= PACKETS_TO_BUFFER) {
+        isBuffering = false;
+        // --- START OF EDIT: نوتیفیکیشن حذف شد ---
+        // sendNotification('info', 'بافر کامل شد، پخش شروع می‌شود!');
+        // --- END OF EDIT ---
+      } else {
+        return;
+      }
+    }
+
     isPlaying = true;
     const int16Buffer = audioQueue.shift();
     const float32Buffer = new Float32Array(int16Buffer.length);
@@ -89,13 +128,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const playTime = Math.max(nextPlayTime, audioContext.currentTime);
     source.start(playTime);
     nextPlayTime = playTime + audioBuffer.duration;
+
     source.onended = () => {
       isPlaying = false;
+      
+      if (audioQueue.length === 0) {
+        isBuffering = true;
+        console.log("Playback queue empty. Re-buffering for next utterance...");
+      }
+      
       playNextInQueue();
     };
   }
   
-  // --- UI Update Functions (بدون تغییر جزئی در متن) ---
+  // --- توابع UI (بدون تغییر) ---
   function updateButtonUI() {
     if (!radioToggleBtn) return;
     const icon = '<i class="fas fa-power-off ml-2"></i>';
@@ -117,13 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
     radioStatusText.classList.add('text-green-400');
     radioToggleBtn.disabled = false;
     radioToggleBtn.classList.remove('bg-gray-600', 'cursor-not-allowed');
-    updateButtonUI(); // برای تنظیم رنگ و متن اولیه دکمه
+    updateButtonUI();
   }
 
   function setBroadcastOffline() {
     isBroadcastLive = false;
     isRadioOn = false;
     audioQueue.length = 0;
+    if (inactivityTimer) clearTimeout(inactivityTimer);
     if (!radioStatusText || !radioToggleBtn) return;
     radioStatusText.textContent = 'پخش زنده متوقف است';
     radioStatusText.classList.remove('text-green-400');
@@ -132,13 +179,19 @@ document.addEventListener('DOMContentLoaded', () => {
     radioToggleBtn.classList.add('bg-gray-600', 'cursor-not-allowed');
     radioToggleBtn.innerHTML = `<i class="fas fa-power-off ml-2"></i><span>روشن کردن رادیو</span>`;
   }
-
+  
   // --- Socket.IO Listeners ---
   if (window.socket) {
     socket.on('radio-started', setBroadcastLive);
     socket.on('radio-stopped', setBroadcastOffline);
+
     socket.on('audio-stream', ({ buffer }) => {
       if (isRadioOn) {
+        if (inactivityTimer) {
+          clearTimeout(inactivityTimer);
+        }
+        inactivityTimer = setTimeout(forceFlushBuffer, INACTIVITY_TIMEOUT_MS);
+
         audioQueue.push(new Int16Array(buffer));
         playNextInQueue();
       }
@@ -149,8 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.menu-item[data-section="radio"]').forEach(item => {
     item.addEventListener('click', loadRadio);
   });
-  
-  // --- START OF EDIT: اضافه کردن لیسنر برای دکمه رفرش ---
   if (btnRefresh) {
     btnRefresh.addEventListener('click', () => {
       if (document.querySelector('.content-section.active')?.id === 'radio') {
@@ -158,5 +209,4 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  // --- END OF EDIT ---
 });

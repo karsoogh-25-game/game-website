@@ -10,8 +10,8 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     connectTimeout: 60000
   },
   pool: {
-    max: 15,
-    min: 5,
+    max: 50,
+    min: 10,
     acquire: 30000,
     idle: 10000
   }

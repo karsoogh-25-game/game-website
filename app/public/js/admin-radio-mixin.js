@@ -1,3 +1,5 @@
+// app/public/js/admin-radio-mixin.js
+
 const adminRadioMixin = {
   data: {
     // --- وضعیت‌های مربوط به رادیو ---
@@ -19,9 +21,7 @@ const adminRadioMixin = {
     // --- ثابت‌ها ---
     VAD_THRESHOLD: 0.02,
     BUFFER_SIZE: 4096,
-    // --- START OF EDIT: تغییر بازه زمانی ---
-    SEND_INTERVAL_MS: 3000,
-    // --- END OF EDIT ---
+    SEND_INTERVAL_MS: 250,
   },
   methods: {
     // --- متد اصلی برای روشن/خاموش کردن رادیو ---
@@ -47,7 +47,7 @@ const adminRadioMixin = {
         const sourceNode = this.audioContext.createMediaStreamSource(this.localStream);
         this.scriptNode = this.audioContext.createScriptProcessor(this.BUFFER_SIZE, 1, 1);
         
-        // ۳. اتصال گراف صوتی (ساده‌تر شد)
+        // ۳. اتصال گراف صوتی
         sourceNode.connect(this.scriptNode);
         this.scriptNode.connect(this.audioContext.destination); // تا ادمین صدای خود را بشنود
 
@@ -95,8 +95,9 @@ const adminRadioMixin = {
       // اگر افکت فعال بود، بافر صدا را با کتابخانه پردازش کن
       if (this.isEffectOn) {
         if (!this.pitchShifter) {
-          // در اولین استفاده، یک نمونه از افکت PitchShifter با گام ۰.۶ (صدای کلفت) می‌سازیم
+          // --- START OF EDIT: استفاده از پیشوند `soundtouch.` به حالت صحیح بازگردانده شد ---
           this.pitchShifter = new soundtouch.PitchShifter(this.audioContext.sampleRate, 0.6);
+          // --- END OF EDIT ---
         }
         // ساخت بافر ورودی برای کتابخانه
         const soundtouchBuffer = {
