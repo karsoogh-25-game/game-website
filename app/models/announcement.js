@@ -14,13 +14,13 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true
       },
       attachment: {
-        type: DataTypes.STRING,  // نام فایل آپلود شده
+        type: DataTypes.STRING, 
         allowNull: true
       }
     });
   
     Announcement.associate = models => {
-      // اینجا اگر نیاز به ارتباط با مدل‌های دیگر بود اضافه کنید
+      // بیشتر
     };
   
     return Announcement;

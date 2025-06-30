@@ -3,10 +3,6 @@ const { Content, ContentAttachment } = require('../models');
 const path = require('path');
 const fs   = require('fs');
 
-/**
- * GET /api/training
- * → لیست همه محتواها به همراه ضمائم
- */
 exports.list = async (req, res) => {
   try {
     const rows = await Content.findAll({
@@ -24,10 +20,6 @@ exports.list = async (req, res) => {
   }
 };
 
-/**
- * POST /admin/api/training
- * → ایجاد یا ویرایش محتوا
- */
 exports.createOrUpdate = async (req, res) => {
   const { title, shortDescription, longDescription, deleteIds } = req.body;
   const id = req.params.id;
@@ -39,7 +31,6 @@ exports.createOrUpdate = async (req, res) => {
     } else {
       content = await Content.create({ title, shortDescription, longDescription });
     }
-    // حذف ضمائم
     if (deleteIds && deleteIds.length) {
       for (let aid of deleteIds) {
         const att = await ContentAttachment.findByPk(aid);
@@ -49,7 +40,6 @@ exports.createOrUpdate = async (req, res) => {
         }
       }
     }
-    // ضمائم جدید (اگر فایل فرستاده شده)
     if (req.files) {
       for (let file of req.files) {
         await ContentAttachment.create({
@@ -68,9 +58,6 @@ exports.createOrUpdate = async (req, res) => {
   }
 };
 
-/**
- * DELETE /admin/api/training/:id
- */
 exports.delete = async (req, res) => {
   try {
     const content = await Content.findByPk(req.params.id, { include:'attachments' });

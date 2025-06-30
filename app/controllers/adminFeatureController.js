@@ -1,9 +1,5 @@
 const { FeatureFlag, sequelize } = require('../models');
 
-/**
- * GET /admin/api/features
- * → لیست تمام قابلیت‌ها را برای نمایش در پنل ادمین برمی‌گرداند
- */
 exports.getFeatureFlags = async (req, res) => {
   try {
     const flags = await FeatureFlag.findAll({
@@ -16,10 +12,6 @@ exports.getFeatureFlags = async (req, res) => {
   }
 };
 
-/**
- * PUT /admin/api/features
- * → وضعیت یک یا چند قابلیت را به‌روزرسانی می‌کند
- */
 exports.updateFeatureFlags = async (req, res) => {
   const flagsToUpdate = req.body.flags;
   if (!Array.isArray(flagsToUpdate)) {
@@ -36,10 +28,7 @@ exports.updateFeatureFlags = async (req, res) => {
     }
     await t.commit();
 
-    // --- START OF EDIT: ارسال رویداد برای ریلود کردن اجباری کلاینت‌ها ---
-    // به جای ارسال داده‌های جدید، یک دستور ساده برای ریلود کردن صفحه می‌فرستیم.
     req.io.emit('force-reload', { message: 'Admin updated site features. Reloading...' });
-    // --- END OF EDIT ---
 
     res.json({ success: true, message: 'قابلیت‌ها با موفقیت به‌روزرسانی و اعمال شدند.' });
 

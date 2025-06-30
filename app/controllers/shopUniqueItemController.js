@@ -1,11 +1,6 @@
 // app/controllers/shopUniqueItemController.js
 
 const { UniqueItem, Group, GroupMember, sequelize } = require('../models');
-
-/**
- * POST /api/shop/unique-items/:id/buy
- * → منطق خرید یک آیتم خاص
- */
 exports.buyUniqueItem = async (req, res) => {
   const uniqueItemId = req.params.id;
   const userId = req.session.userId;
@@ -41,19 +36,14 @@ exports.buyUniqueItem = async (req, res) => {
 
     await t.commit();
 
-    // --- START of EDIT: اطلاع‌رسانی لحظه‌ای با جزئیات کامل ---
-    // آیتم را به همراه اطلاعات مالک جدیدش دوباره واکشی می‌کنیم
     const updatedItem = await UniqueItem.findByPk(item.id, {
         include: { model: Group, as: 'owner', attributes: ['id', 'name'] }
     });
 
-    // رویداد جدید را برای تمام کاربران ارسال می‌کنیم
     io.emit('uniqueItemUpdated', updatedItem.toJSON());
     
-    // رویدادهای عمومی برای آپدیت بخش‌های دیگر
     io.emit('shopUpdate');
     io.emit('leaderboardUpdate');
-    // --- END of EDIT ---
 
     res.json({ success: true, message: `آیتم "${item.name}" با موفقیت خریداری شد.` });
 
@@ -65,10 +55,6 @@ exports.buyUniqueItem = async (req, res) => {
 };
 
 
-/**
- * POST /api/shop/unique-items/:id/sell
- * → منطق فروش یک آیتم خاص به فروشگاه
- */
 exports.sellUniqueItem = async (req, res) => {
     const uniqueItemId = req.params.id;
     const userId = req.session.userId;
@@ -102,17 +88,13 @@ exports.sellUniqueItem = async (req, res) => {
       await item.save({ transaction: t });
   
       await t.commit();
-  
-      // --- START of EDIT: اطلاع‌رسانی لحظه‌ای با جزئیات کامل ---
-      // آیتم حالا دیگر مالک ندارد
+
       const updatedItem = await UniqueItem.findByPk(item.id);
       
-      // رویداد جدید را برای تمام کاربران ارسال می‌کنیم
       io.emit('uniqueItemUpdated', updatedItem.toJSON());
       
       io.emit('shopUpdate');
       io.emit('leaderboardUpdate');
-      // --- END of EDIT ---
   
       res.json({ success: true, message: `آیتم "${item.name}" با موفقیت فروخته شد و ${payout} امتیاز به گروه شما اضافه شد.` });
   

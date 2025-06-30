@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!data.length) {
         container.innerHTML = `<p class="text-gray-400 text-center py-6">هیچ اطلاعیه‌ای موجود نیست.</p>`;
       } else {
-        // مرتب‌سازی بر اساس جدیدترین
         data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         container.innerHTML = data.map(a => {
           const hasDetails     = Boolean(a.longDescription?.trim());
@@ -20,7 +19,6 @@ document.addEventListener('DOMContentLoaded', function() {
           const showToggle     = hasDetails || hasAttachments;
           const id             = `notif-${a.id}`;
 
-          // HTML برای هر فایل پیوست
           const attachmentsHtml = hasAttachments
             ? `<div class="flex flex-wrap gap-2">
                  ${a.attachments.map(att => `
@@ -91,7 +89,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // تابع باز و بسته کردن جزئیات/ضمائم
   window.toggleNotification = function(id) {
     const details = document.getElementById(id);
     const icon    = document.getElementById(`icon-${id}`);
@@ -106,17 +103,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
-  // واکنش به رویدادهای Socket.IO
   ['announcementCreated','announcementUpdated','announcementDeleted'].forEach(evt => {
     window.socket.on(evt, () => {
-      // فقط در صورت فعال بودن بخش اطلاعیه‌ها
       if (document.querySelector('.content-section.active')?.id === 'announcements') {
         loadAnnouncements();
       }
     });
   });
 
-  // تنظیم listenerها برای کلیک روی تب‌ها و دکمه رفرش
   document.querySelectorAll('[data-section="announcements"]').forEach(el =>
     el.addEventListener('click', () => loadAnnouncements())
   );
@@ -126,7 +120,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // بارگذاری اولیه
   if (document.querySelector('.content-section.active')?.id === 'announcements') {
     loadAnnouncements();
   }

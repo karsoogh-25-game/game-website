@@ -14,12 +14,9 @@ const shopAdminMixin = {
       adminModifier: 1.0
     },
     showCurrencyForm: false,
-    // --- START of EDIT: فیلد جدید برای نگهداری فایل آپلود شده ---
     selectedFile: null
-    // --- END of EDIT ---
   },
   methods: {
-    // --- متدهای مدیریت ارزها ---
 
     async fetchCurrencies() {
       try {
@@ -37,46 +34,33 @@ const shopAdminMixin = {
         id: null, name: '', description: '', image: '',
         basePrice: 1.0, priceCoefficient: 0.01, adminModifier: 1.0
       };
-      // --- START of EDIT: ریست کردن فایل انتخابی ---
       this.selectedFile = null;
-      // --- END of EDIT ---
       this.showCurrencyForm = true;
     },
 
     openEditCurrencyForm(currency) {
       this.editingId = currency.id;
       this.currencyForm = { ...currency };
-       // --- START of EDIT: ریست کردن فایل انتخابی ---
       this.selectedFile = null;
-       // --- END of EDIT ---
       this.showCurrencyForm = true;
     },
 
-    // --- START of EDIT: تابع جدید برای مدیریت انتخاب فایل ---
     handleFileSelect(event) {
-        // اولین فایل انتخاب شده را در متغیر ذخیره می‌کنیم
         this.selectedFile = event.target.files[0];
     },
-    // --- END of EDIT ---
-
-
-    // --- START of EDIT: بازنویسی کامل تابع ذخیره برای ارسال FormData ---
     async saveCurrency() {
       if (!this.currencyForm.name.trim() || this.currencyForm.basePrice === undefined) {
         return this.sendNotification('error', 'نام و قیمت پایه الزامی است.');
       }
       this.setLoadingState(true);
       
-      // به جای ارسال جیسون، یک فرم دیتا می‌سازیم
       const formData = new FormData();
 
-      // تمام فیلدهای متنی را به فرم اضافه می‌کنیم
       formData.append('name', this.currencyForm.name);
       formData.append('description', this.currencyForm.description || '');
       formData.append('basePrice', this.currencyForm.basePrice);
       formData.append('priceCoefficient', this.currencyForm.priceCoefficient);
 
-      // اگر کاربر فایل جدیدی انتخاب کرده بود، آن را هم اضافه می‌کنیم
       if (this.selectedFile) {
         formData.append('image', this.selectedFile);
       }
@@ -87,7 +71,6 @@ const shopAdminMixin = {
       const method = this.editingId ? 'put' : 'post';
 
       try {
-        // ارسال فرم دیتا با هدر مناسب
         await axios[method](url, formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
@@ -96,7 +79,7 @@ const shopAdminMixin = {
         
         this.sendNotification('success', 'ارز با موفقیت ذخیره شد.');
         this.showCurrencyForm = false;
-        await this.fetchCurrencies(); // بازخوانی لیست
+        await this.fetchCurrencies();
       } catch (err) {
         this.sendNotification('error', 'خطا در ذخیره ارز');
         console.error(err);
@@ -104,8 +87,6 @@ const shopAdminMixin = {
         this.setLoadingState(false);
       }
     },
-    // --- END of EDIT ---
-
     async applyModifier(currency) {
       const newModifier = prompt(`ضریب جدید را برای ارز "${currency.name}" وارد کنید:`, currency.adminModifier);
       if (newModifier === null || isNaN(parseFloat(newModifier))) {
@@ -142,9 +123,6 @@ const shopAdminMixin = {
             this.setLoadingState(false);
         }
     },
-
-    // --- متدهای مدیریت آیتم‌های خاص (در آینده) ---
-    // ...
   },
   watch: {
     activeSection(newSection) {

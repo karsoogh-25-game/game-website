@@ -38,7 +38,6 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   Currency.associate = function(models) {
-    // یک ارز می‌تواند در چندین کیف پول مختلف وجود داشته باشد
     Currency.hasMany(models.Wallet, { foreignKey: 'currencyId' });
   };
 

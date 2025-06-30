@@ -14,8 +14,6 @@ const adminUniqueItemsMixin = {
     uniqueItemSelectedFile: null
   },
   methods: {
-    // --- متدهای مدیریت آیتم‌های خاص ---
-
     async fetchUniqueItems() {
       try {
         const res = await axios.get('/admin/api/unique-items');
@@ -100,8 +98,6 @@ const adminUniqueItemsMixin = {
   watch: {
     activeSection(newSection) {
       if (newSection === 'items') {
-        // این تابع از قبل در mixin دیگر وجود دارد و فراخوانی می‌شود
-        // this.fetchCurrencies(); 
         this.fetchUniqueItems();
       }
     }

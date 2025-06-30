@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
         comment: 'دسته‌بندی برای نمایش در پنل (menu یا action)'
     }
   }, {
-    tableName: 'FeatureFlags', // نام جدول را صراحتاً مشخص می‌کنیم
+    tableName: 'FeatureFlags',
     timestamps: false
   });
   return FeatureFlag;

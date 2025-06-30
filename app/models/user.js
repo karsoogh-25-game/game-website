@@ -18,13 +18,11 @@ module.exports = (sequelize) => {
       defaultValue: 'user',
       comment: 'نقش کاربر: user یا mentor'
     },
-    // ---- فیلد جنسیت (اصلاح شده نهایی) ----
     gender: {
-      type: DataTypes.ENUM('male', 'female'), // فقط این دو مقدار مجاز است
-      allowNull: false, // این فیلد نمی‌تواند خالی باشد
+      type: DataTypes.ENUM('male', 'female'),
+      allowNull: false,
       comment: 'جنسیت کاربر'
     }
-    // ---- پایان فیلد جدید ----
   }, {
     hooks: {
       beforeCreate: async (user) => {

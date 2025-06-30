@@ -108,20 +108,16 @@ exports.renderDashboard = async (req, res) => {
     const user = await User.findByPk(req.session.userId);
     const fact = facts[Math.floor(Math.random() * facts.length)];
 
-    // --- START OF EDIT: خواندن وضعیت قابلیت‌ها از دیتابیس ---
     const allFlags = await FeatureFlag.findAll({ attributes: ['name', 'isEnabled'] });
     const featureFlags = allFlags.reduce((acc, flag) => {
         acc[flag.name] = flag.isEnabled;
         return acc;
     }, {});
-    // --- END OF EDIT ---
 
-    // ارسال همه اطلاعات لازم به فایل EJS
     res.render('dashboard', { user, fact, featureFlags });
 
   } catch (error) {
     console.error("Error rendering dashboard:", error);
-    // در صورت بروز خطا، یک صفحه خطای ساده نمایش می‌دهیم
     res.status(500).send("خطا در بارگذاری صفحه. لطفاً بعداً تلاش کنید.");
   }
 };

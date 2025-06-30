@@ -6,9 +6,7 @@ new Vue({
     mode: null,
     slide: 0,
     firstName: '', lastName: '',
-    // ---- مقدار پیش‌فرض gender برای اجباری کردن انتخاب تغییر کرد ----
     gender: null,
-    // ---- پایان تغییر ----
     phoneNumber: '', nationalId: '', email: '',
     code: '', password: '', password2: '',
     errorMessage: '', errorField: '',
@@ -38,17 +36,14 @@ new Vue({
       this.clearError();
       if (this.loading) return;
 
-      // client-side validation
       if (this.slide === 1 && (!this.firstName || !this.lastName)) {
         this.error('firstName', 'نام و نام‌خانوادگی الزامی است');
         return;
       }
-      // ---- اعتبارسنجی جدید برای جنسیت ----
       if (this.slide === 1 && !this.gender) {
         this.error('gender', 'انتخاب جنسیت الزامی است.');
         return;
       }
-      // ---- پایان تغییر ----
       if (this.slide === 2) {
         if (!this.validPhone)    { this.error('phoneNumber', 'شماره موبایل صحیح نیست'); return; }
         if (!this.validNational) { this.error('nationalId', 'کد ملی باید ۱۰ رقم باشد'); return; }

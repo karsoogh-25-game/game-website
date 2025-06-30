@@ -1,19 +1,18 @@
 // app/public/js/admin.js (فایل اصلی و جدید)
 new Vue({
   el: '#adminApp',
-  // تمام منطق‌های جدا شده را به عنوان mixin به نمونه اصلی Vue اضافه می‌کنیم
   mixins: [
     adminUsersMixin,
     adminAnnouncementsMixin,
     adminGroupsMixin,
     adminContentsMixin,
-    shopAdminMixin, // برای ارزها
+    shopAdminMixin,
     adminUniqueItemsMixin,
-    adminFeaturesMixin, // میکسین جدید برای مدیریت رویدادها
-    adminRadioMixin     // --- میکس‌این جدید رادیو اضافه شد ---
+    adminFeaturesMixin,
+    adminRadioMixin   
   ],
   data: {
-    editingId: null, // این فیلد ممکن است بین mixinها مشترک باشد، پس در سطح اصلی می‌ماند
+    editingId: null,
     activeSection: 'users',
     sections: [
       { key: 'users', label: 'کاربرها' },
@@ -23,11 +22,10 @@ new Vue({
       { key: 'items', label: 'فروشگاه' },
       { key: 'contents', label: 'محتواها' },
       { key: 'features', label: 'مدیریت رویدادها' },
-      { key: 'radio', label: 'رادیو' } // --- بخش جدید رادیو اضافه شد ---
+      { key: 'radio', label: 'رادیو' }
     ]
   },
   created() {
-    // لیسنرهای عمومی Socket.IO
     window.socket.on('announcementCreated', ann => this.announcements.unshift(ann));
     window.socket.on('announcementUpdated', ann => {
       const idx = this.announcements.findIndex(a => a.id === ann.id);
@@ -54,14 +52,12 @@ new Vue({
     window.socket.on('contentUpdated', () => this.activeSection === 'contents' && this.fetchTraining());
     window.socket.on('contentDeleted', () => this.activeSection === 'contents' && this.fetchTraining());
     
-    // لیسنر برای آپدیت لحظه‌ای قابلیت‌ها
     window.socket.on('featureFlagsUpdated', () => {
         if (this.activeSection === 'features') {
             this.fetchFeatureFlags();
         }
     });
     
-    // اولین بارگذاری اطلاعات
     this.loadSection();
   },
   mounted() {
@@ -69,13 +65,8 @@ new Vue({
     document.getElementById('refresh-btn').addEventListener('click', this.refreshData);
   },
   methods: {
-    // متدهای عمومی و مشترک
     selectSection(key) {
-      // --- START OF FIX ---
-      // متد را ساده‌سازی می‌کنیم تا فقط وضعیت را عوض کند
-      // watcher بقیه کارها را به صورت خودکار انجام می‌دهد
       this.activeSection = key;
-      // --- END OF FIX ---
     },
     setLoadingState(on) {
       const el = document.getElementById('loading-spinner');
@@ -102,9 +93,6 @@ new Vue({
     async loadSection() {
         if (!this.activeSection) return;
         this.setLoadingState(true);
-        // فراخوانی متد مربوط به هر بخش
-        // --- START OF FIX ---
-        // کیس 'radio' به سوییچ اضافه شد
         switch(this.activeSection) {
             case 'users': await this.fetchUsers(); break;
             case 'mentors': await this.fetchMentors(); break;
@@ -119,15 +107,12 @@ new Vue({
                 await this.fetchFeatureFlags();
                 break;
             case 'radio':
-                // بخش رادیو نیازی به بارگذاری داده اولیه ندارد
                 break;
         }
-        // --- END OF FIX ---
         this.setLoadingState(false);
     }
   },
   watch: {
-    // هرگاه بخش فعال تغییر کرد، اطلاعات آن را بارگذاری کن
     activeSection(newSection, oldSection) {
         if (newSection !== oldSection) {
             this.loadSection();

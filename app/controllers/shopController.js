@@ -34,10 +34,6 @@ async function updateAndBroadcastPrice(io, currency, transaction = null) {
 exports.updateAndBroadcastPrice = updateAndBroadcastPrice;
 
 
-/**
- * GET /api/shop/data
- * → اطلاعات کلی فروشگاه برای نمایش به کاربر (بهینه شده با Redis)
- */
 exports.getShopData = async (req, res) => {
   try {
     const currencies = await Currency.findAll({ order: [['name', 'ASC']] });
@@ -71,21 +67,13 @@ exports.getShopData = async (req, res) => {
 };
 
 
-/**
- * GET /api/shop/my-assets
- * → دارایی‌های گروه کاربر فعلی
- */
 exports.getMyAssets = async (req, res) => {
     try {
       const groupMember = await sequelize.models.GroupMember.findOne({ where: { userId: req.session.userId } });
       
-      // --- START of EDIT: بررسی عضویت کاربر در گروه ---
-      // اگر کاربر عضو گروهی نباشد، یک پاسخ مشخص برمی‌گردانیم
       if (!groupMember) {
         return res.json({ notInGroup: true });
       }
-      // --- END of EDIT ---
-
       const group = await Group.findByPk(groupMember.groupId);
   
       const currencyAssets = await Wallet.findAll({
@@ -111,10 +99,6 @@ exports.getMyAssets = async (req, res) => {
   };
 
 
-/**
- * POST /api/shop/currencies/buy
- * → منطق خرید ارز (بهینه شده)
- */
 exports.buyCurrency = async (req, res) => {
     const { currencyId, amount } = req.body;
     const userId = req.session.userId;
@@ -168,10 +152,6 @@ exports.buyCurrency = async (req, res) => {
 };
   
 
-/**
- * POST /api/shop/currencies/sell
- * → منطق فروش ارز (بهینه شده)
- */
 exports.sellCurrency = async (req, res) => {
     const { currencyId, amount } = req.body;
     const userId = req.session.userId;

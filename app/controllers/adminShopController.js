@@ -14,11 +14,6 @@ if (!redisClient.isOpen) {
 
 
 // --- مدیریت ارزها (Currencies) ---
-
-/**
- * ایجاد ارز جدید
- * POST /admin/api/shop/currencies
- */
 exports.createCurrency = async (req, res) => {
   try {
     const { name, description, basePrice, priceCoefficient } = req.body;
@@ -26,13 +21,10 @@ exports.createCurrency = async (req, res) => {
       return res.status(400).json({ message: 'نام و قیمت پایه ارز الزامی است.' });
     }
 
-    // --- START of EDIT: ذخیره مسیر عکس ---
     let imagePath = null;
     if (req.file) {
-        // مسیر ذخیره شده توسط multer را به فرمت /uploads/filename.ext تبدیل می‌کنیم
         imagePath = `/uploads/${req.file.filename}`;
     }
-    // --- END of EDIT ---
 
     const currency = await Currency.create({ 
         name, 
@@ -48,10 +40,6 @@ exports.createCurrency = async (req, res) => {
   }
 };
 
-/**
- * مشاهده لیست همه ارزها
- * GET /admin/api/shop/currencies
- */
 exports.listCurrencies = async (req, res) => {
   try {
     const currencies = await Currency.findAll({ order: [['createdAt', 'DESC']] });
@@ -62,10 +50,6 @@ exports.listCurrencies = async (req, res) => {
   }
 };
 
-/**
- * ویرایش اطلاعات پایه ارز
- * PUT /admin/api/shop/currencies/:id
- */
 exports.updateCurrency = async (req, res) => {
   try {
     const currency = await Currency.findByPk(req.params.id);
@@ -76,24 +60,18 @@ exports.updateCurrency = async (req, res) => {
     const { name, description, basePrice, priceCoefficient } = req.body;
     const updateData = { name, description, basePrice, priceCoefficient };
 
-    // --- START of EDIT: مدیریت آپلود عکس جدید و حذف عکس قدیمی ---
     if (req.file) {
-        // اگر عکس قدیمی وجود داشت، آن را از سرور حذف کن
         if (currency.image) {
             const oldImagePath = path.join(__dirname, '..', 'public', currency.image);
-            // fs.unlink برای حذف فایل است. در صورت خطا، فقط یک هشدار در لاگ ثبت می‌کنیم.
             fs.unlink(oldImagePath, (err) => {
                 if (err) console.warn(`Could not delete old image: ${oldImagePath}`);
             });
         }
-        // مسیر عکس جدید را برای ذخیره در دیتابیس تنظیم کن
         updateData.image = `/uploads/${req.file.filename}`;
     }
-    // --- END of EDIT ---
     
     await currency.update(updateData);
     
-    // بعد از ویرایش، قیمت کش شده را آپدیت می‌کنیم
     const { updateAndBroadcastPrice } = require('./shopController');
     await updateAndBroadcastPrice(req.app.get('io'), currency);
 
@@ -104,10 +82,6 @@ exports.updateCurrency = async (req, res) => {
   }
 };
 
-/**
- * تنظیم ضریب ادمین (Buff/Nerf)
- * PUT /admin/api/shop/currencies/:id/modifier
- */
 exports.updateModifier = async (req, res) => {
   try {
     const io = req.app.get('io');
@@ -132,10 +106,6 @@ exports.updateModifier = async (req, res) => {
   }
 };
 
-/**
- * DELETE /admin/api/shop/currencies/:id
- * → حذف ارز و بازگرداندن امتیاز به کاربران
- */
 exports.deleteCurrency = async (req, res) => {
     const currencyId = req.params.id;
     const io = req.app.get('io');
@@ -163,14 +133,12 @@ exports.deleteCurrency = async (req, res) => {
         
         await Wallet.destroy({ where: { currencyId }, transaction: t });
         
-        // --- START of EDIT: حذف عکس ارز از سرور ---
         if (currency.image) {
             const imagePath = path.join(__dirname, '..', 'public', currency.image);
             fs.unlink(imagePath, (err) => {
                 if (err) console.warn(`Could not delete image on currency delete: ${imagePath}`);
             });
         }
-        // --- END of EDIT ---
 
         await currency.destroy({ transaction: t });
         await redisClient.del(`price:currency:${currencyId}`);
@@ -190,8 +158,6 @@ exports.deleteCurrency = async (req, res) => {
 };
 
 
-// --- مدیریت آیتم‌های خاص (Unique Items) ---
-// (این توابع در مراحل بعدی تکمیل خواهند شد)
 exports.createUniqueItem = async (req, res) => { /* ... in next steps ... */ };
 exports.listUniqueItems = async (req, res) => { /* ... in next steps ... */ };
 exports.updateUniqueItem = async (req, res) => { /* ... in next steps ... */ };

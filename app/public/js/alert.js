@@ -84,6 +84,5 @@ function sendConfirmationNotification(type, text, callback) {
   });
 }
 
-// در دسترس قرار دادن توابع برای دیگر فایل‌ها
 window.sendNotification = sendNotification;
 window.sendConfirmationNotification = sendConfirmationNotification;

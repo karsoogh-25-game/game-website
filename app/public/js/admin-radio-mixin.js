@@ -2,25 +2,21 @@
 
 const adminRadioMixin = {
   data: {
-    // --- وضعیت‌های مربوط به رادیو ---
     isBroadcasting: false,
     isEffectOn: false,
 
-    // --- آبجکت‌های Web Audio API ---
     localStream: null,
     audioContext: null,
     scriptNode: null,
-    sourceNode: null, // نود منبع را در دیتا ذخیره می‌کنیم تا بتوانیم اتصالش را تغییر دهیم
+    sourceNode: null,
 
-    // --- START OF EDIT: آبجکت‌های جدید برای افکت داخلی مرورگر ---
-    effectBiquadFilter: null,  // افکت جدید برای بم کردن صدا
-    effectRingModulator: {     // افکت قبلی برای حالت روباتیک
+    effectBiquadFilter: null, 
+    effectRingModulator: {    
       carrier: null,
       modulator: null,
     },
-    // --- END OF EDIT ---
 
-    // --- بافر ارسال (منطق اصلی شما حفظ شده) ---
+    // --- بافر ارسال ---
     sendBuffer: [],
     sendInterval: null,
 
@@ -43,37 +39,27 @@ const adminRadioMixin = {
     async startBroadcast() {
       if (this.localStream) return;
       try {
-        // ۱. گرفتن دسترسی به میکروفون
         this.localStream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1, sampleRate: 48000 }
         });
 
-        // ۲. راه‌اندازی Web Audio API
         this.audioContext = new AudioContext({ sampleRate: 48000 });
         this.sourceNode = this.audioContext.createMediaStreamSource(this.localStream);
         this.scriptNode = this.audioContext.createScriptProcessor(this.BUFFER_SIZE, 1, 1);
 
-        // --- START OF EDIT: ساخت اجزای افکت ترکیبی (بم و روباتیک) ---
-        // فیلتر پایین گذر برای بم شدن صدا
         this.effectBiquadFilter = this.audioContext.createBiquadFilter();
         this.effectBiquadFilter.type = 'lowpass';
-        this.effectBiquadFilter.frequency.value = 800; // فرکانس‌های بالای ۸۰۰ هرتز حذف می‌شوند تا صدا بم شود
+        this.effectBiquadFilter.frequency.value = 800; 
 
-        // مدولاتور حلقه‌ای برای صدای روباتیک
         this.effectRingModulator.modulator = this.audioContext.createGain();
         this.effectRingModulator.carrier = this.audioContext.createOscillator();
-        this.effectRingModulator.carrier.frequency.value = 60; // فرکانس پایین برای افکت بم‌تر
+        this.effectRingModulator.carrier.frequency.value = 60;
         this.effectRingModulator.carrier.start();
-        // --- END OF EDIT ---
-
-        // ۳. اتصال گراف صوتی اولیه (بدون افکت)
         this.sourceNode.connect(this.scriptNode);
-        this.scriptNode.connect(this.audioContext.destination); // تا ادمین صدای خود را بشنود
+        this.scriptNode.connect(this.audioContext.destination);
 
-        // ۴. تنظیم تابع پردازش صدا
         this.scriptNode.onaudioprocess = this.processAudio;
 
-        // ۵. شروع بازه زمانی برای ارسال داده‌ها
         this.sendInterval = setInterval(this.sendAudioChunks, this.SEND_INTERVAL_MS);
 
         this.isBroadcasting = true;
@@ -85,7 +71,6 @@ const adminRadioMixin = {
       }
     },
 
-    // --- متد برای توقف پخش ---
     stopBroadcast() {
       if (!this.localStream) return;
 
@@ -95,7 +80,6 @@ const adminRadioMixin = {
       }
       clearInterval(this.sendInterval);
       
-      // ریست کردن تمام متغیرها
       this.localStream = null;
       this.audioContext = null;
       this.scriptNode = null;
@@ -109,7 +93,6 @@ const adminRadioMixin = {
       this.sendNotification('info', 'پخش زنده متوقف شد.');
     },
 
-    // --- تابع پردازش صدا (کاملا بدون تغییر) ---
     processAudio(e) {
       const input = e.inputBuffer.getChannelData(0);
       let processedSamples = input;
@@ -125,7 +108,6 @@ const adminRadioMixin = {
       }
     },
     
-    // --- تابع ارسال بسته‌ها (کاملا بدون تغییر) ---
     sendAudioChunks() {
       if (!this.sendBuffer.length) return;
 
@@ -147,17 +129,14 @@ const adminRadioMixin = {
       window.socket.emit('audio-stream', { buffer: int16.buffer });
     },
 
-    // --- متد فعال/غیرفعال کردن افکت (با استفاده از نودهای داخلی) ---
     toggleVoiceEffect() {
       if (!this.isBroadcasting) return;
       
       this.isEffectOn = !this.isEffectOn;
       
-      // قطع تمام اتصالات قبلی از منبع اصلی صدا
       this.sourceNode.disconnect();
 
       if (this.isEffectOn) {
-        // مسیر جدید: میکروفون -> فیلتر بم کننده -> افکت روباتیک -> پردازشگر
         this.sourceNode.connect(this.effectBiquadFilter);
         this.effectBiquadFilter.connect(this.effectRingModulator.modulator);
         this.effectRingModulator.carrier.connect(this.effectRingModulator.modulator.gain);
@@ -165,7 +144,6 @@ const adminRadioMixin = {
         
         this.sendNotification('info', 'افکت صدای هکری فعال شد.');
       } else {
-        // مسیر اصلی: میکروفون -> پردازشگر
         this.sourceNode.connect(this.scriptNode);
         this.sendNotification('info', 'افکت صدا غیرفعال شد.');
       }

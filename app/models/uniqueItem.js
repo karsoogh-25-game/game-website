@@ -47,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
   UniqueItem.associate = function(models) {
     UniqueItem.belongsTo(models.Group, {
       as: 'owner',
-      foreignKey: 'ownerGroupId', // این فیلد به صورت خودکار ساخته می‌شود
+      foreignKey: 'ownerGroupId',
       allowNull: true
     });
   };

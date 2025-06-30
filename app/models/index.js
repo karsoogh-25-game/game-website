@@ -22,7 +22,6 @@ const db = {
   Sequelize
 };
 
-// load each model, passing both sequelize instance and DataTypes
 db.User                    = require('./user')(sequelize, DataTypes);
 db.Admin                   = require('./admin')(sequelize, DataTypes);
 db.Group                   = require('./group')(sequelize, DataTypes);
@@ -36,7 +35,6 @@ db.Wallet                  = require('./wallet')(sequelize, DataTypes);
 db.UniqueItem              = require('./uniqueItem')(sequelize, DataTypes);
 db.FeatureFlag             = require('./featureFlag')(sequelize, DataTypes);
 
-// set up associations
 Object.values(db).forEach(model => {
   if (typeof model.associate === 'function') {
     model.associate(db);

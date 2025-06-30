@@ -20,11 +20,9 @@ exports.registerStep1 = (req, res) => {
   if (!firstName || !lastName) {
     return res.status(400).json({ success: false, message: 'نام و نام‌خانوادگی الزامی است' });
   }
-  // ---- اعتبارسنجی جدید و اجباری برای جنسیت ----
   if (!gender || !['male', 'female'].includes(gender)) {
     return res.status(400).json({ success: false, message: 'انتخاب جنسیت الزامی است' });
   }
-  // ---- پایان تغییر ----
   req.session.regData = { firstName, lastName, gender };
   res.json({ success: true });
 };
