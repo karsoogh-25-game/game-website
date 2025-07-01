@@ -4,12 +4,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const container = document.getElementById('scoreboard-content');
   const btnRefresh = document.getElementById('btn-refresh');
 
-  // تابع اصلی برای گرفتن و نمایش اطلاعات جدول امتیازات
-  // این تابع با فراخوانی، مستقیماً اجرا می‌شود.
   async function loadLeaderboard() {
-    setLoadingState(true); // نمایش اسپینر
+    setLoadingState(true);
     if (container) {
-      container.innerHTML = ''; // پاک کردن محتوای قبلی برای نمایش لودینگ
+      container.innerHTML = '';
     }
 
     try {
@@ -34,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
               </thead>
               <tbody>
                 ${groups.map(g => {
-                  let rowClass = 'bg-gray-800'; // رنگ پیش‌فرض
+                  let rowClass = 'bg-gray-800';
                   if (g.leaderGender === 'female') {
                     rowClass = 'bg-pastel-pink';
                   } else if (g.leaderGender === 'male') {
@@ -63,33 +61,26 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       sendNotification('error', 'خطا در بارگذاری جدول امتیازات');
     } finally {
-      setLoadingState(false); // مخفی کردن اسپینر
+      setLoadingState(false);
     }
   }
 
-  // **مهم: منطق بارگذاری هنگام کلیک روی تب**
-  // این کد تضمین می‌کند که با هر بار کلیک روی منو، تابع لودینگ اجرا شود.
   document.querySelectorAll('.menu-item[data-section="scoreboard"]').forEach(item => {
     item.addEventListener('click', loadLeaderboard);
   });
 
-  // **مهم: منطق دکمه رفرش**
-  // به دکمه رفرش سراسری گوش می‌دهیم
   if (btnRefresh) {
       btnRefresh.addEventListener('click', () => {
         const activeSection = document.querySelector('.content-section.active');
-        // فقط اگر بخش فعال "جدول امتیازات" بود، تابع بارگذاری را صدا بزن
         if (activeSection && activeSection.id === 'scoreboard') {
           loadLeaderboard();
         }
       });
   }
 
-  // منطق آپدیت لحظه‌ای با سوکت
   if (window.socket) {
     window.socket.on('leaderboardUpdate', () => {
       const activeSection = document.querySelector('.content-section.active');
-      // فقط اگر کاربر در حال مشاهده جدول امتیازات است، آن را آپدیت کن
       if (activeSection && activeSection.id === 'scoreboard') {
         loadLeaderboard();
       }

@@ -16,7 +16,6 @@ module.exports = (io) => {
         ]
       });
 
-      // اگر به هر دلیلی leader=null باشد، یک مقدار پیش‌فرض قرار ده
       const safe = groups.map(g => {
         const grp = g.toJSON();  
         if (!grp.leader) {
@@ -38,7 +37,6 @@ module.exports = (io) => {
       const group = await Group.findByPk(req.params.id);
       if (!group) return res.status(404).send('گروه پیدا نشد');
 
-      // فقط فیلدهای مجاز را به‌روزرسانی کن
       const { name, code, walletCode, score } = req.body;
       await group.update({ name, code, walletCode, score });
 
@@ -56,9 +54,7 @@ module.exports = (io) => {
       const group = await Group.findByPk(req.params.id);
       if (!group) return res.status(404).send('گروه پیدا نشد');
 
-      // اول اعضای گروه را خالی کن
       await group.setMembers([]);
-      // سپس خود گروه را حذف کن
       await group.destroy();
 
       io.emit('groupDeleted', { id: parseInt(req.params.id, 10) });

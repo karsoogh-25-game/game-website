@@ -74,9 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       window.socket.emit('join-radio');
       updateButtonUI();
-      // --- START OF EDIT: نوتیفیکیشن ساده‌سازی شد ---
       sendNotification('success', 'رادیو روشن شد.');
-      // --- END OF EDIT ---
     } else {
       window.socket.emit('leave-radio');
       audioQueue.length = 0;
@@ -103,9 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isBuffering) {
       if (audioQueue.length >= PACKETS_TO_BUFFER) {
         isBuffering = false;
-        // --- START OF EDIT: نوتیفیکیشن حذف شد ---
         // sendNotification('info', 'بافر کامل شد، پخش شروع می‌شود!');
-        // --- END OF EDIT ---
       } else {
         return;
       }

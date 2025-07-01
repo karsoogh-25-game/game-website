@@ -1,6 +1,6 @@
 // app/seedAll.js
 
-const { User, Group, GroupMember, sequelize } = require('./models');
+const { User, Group, GroupMember, sequelize } = require('../models');
 
 function randomString(length) {
   const chars = 'abcdefghijklmnopqrstuvwxyz';
@@ -21,12 +21,6 @@ function randomDigits(length) {
 
 (async () => {
   try {
-    // اگر می‌خواید دیتابیس رو از نو بسازید، این خط را آن‌کامنت کنید:
-    // await sequelize.sync({ force: true });
-
-    /////////////////////////
-    // ۱) سید کردن کاربران
-    /////////////////////////
     const NUM_USERS = 100;
     const usersData = [];
     for (let i = 0; i < NUM_USERS; i++) {
@@ -53,9 +47,6 @@ function randomDigits(length) {
     await User.bulkCreate(usersData);
     console.log(`✅ ${NUM_USERS} کاربر رندوم ایجاد شد.`);
 
-    /////////////////////////
-    // ۲) سید کردن گروه‌ها
-    /////////////////////////
     const allUsers = await User.findAll({ attributes: ['id'] });
     const userIds  = allUsers.map(u => u.id);
 
@@ -71,13 +62,6 @@ function randomDigits(length) {
     const groups = await Group.bulkCreate(groupsData);
     console.log(`✅ ${NUM_GROUPS} گروه رندوم ایجاد شد.`);
 
-    //////////////////////////////////////
-    // ۳) پیوستن اعضا به هر گروه (حداکثر 3 نفر)
-    //////////////////////////////////////
-    // ابتدا جدول میانی را خالی کنید (اگر نیاز دارید)
-    // await GroupMember.destroy({ where: {} });
-
-    // نگه‌داشتن set از userIdهایی که هنوز گروه ندارند
     const freeUserIds = new Set(userIds);
 
     for (const grp of groups) {
@@ -85,7 +69,6 @@ function randomDigits(length) {
       await GroupMember.create({ groupId: grp.id, userId: grp.leaderId, role: 'leader' });
       freeUserIds.delete(grp.leaderId);
 
-      // دو عضو دیگر اضافه کنید (یا تا جایی که یوزر آزاد داریم)
       const membersToAdd = 2;
       const freeArray = Array.from(freeUserIds);
       for (let j = 0; j < membersToAdd && freeArray.length > 0; j++) {

@@ -2,7 +2,6 @@ const express = require('express');
 const router  = express.Router();
 const ctrl    = require('../controllers/authController');
 
-// ثبت‌نام مرحله‌ای
 router.post('/api/register/step1',        ctrl.registerStep1);
 router.post('/api/register/step2',        ctrl.registerStep2);
 router.post('/api/register/verify-code',  ctrl.verifyCode);

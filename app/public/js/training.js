@@ -107,10 +107,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // برای تست دستی از Console
   window.loadTraining = loadTraining;
 
-  // تابع toggle شبیه اطلاعیه‌ها
   window.toggleTraining = function(id) {
     const details = document.getElementById(id);
     const icon    = document.getElementById(`icon-${id}`);
@@ -126,18 +124,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
-  // رویداد روی تب
   document.querySelectorAll('[data-section="training"]')
     .forEach(el => el.addEventListener('click', loadTraining));
 
-  // دکمهٔ ریفرش
   btnRefresh.addEventListener('click', () => {
     if (document.querySelector('.content-section.active')?.id === 'training') {
       loadTraining();
     }
   });
 
-  // real-time با Socket.IO
   ['contentCreated','contentUpdated','contentDeleted']
     .forEach(evt => window.socket.on(evt, () => {
       if (document.querySelector('.content-section.active')?.id === 'training') {
@@ -145,7 +140,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }));
 
-  // لود اولیه
   if (document.querySelector('.content-section.active')?.id === 'training') {
     loadTraining();
   }

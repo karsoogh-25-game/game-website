@@ -10,10 +10,8 @@ const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const { sequelize, Admin, GroupMember, FeatureFlag } = require('./models');
 
-// --- START OF EDIT: متغیرهای کلاینت Redis به اسکوپ بالاتر منتقل شد ---
 let pubClient;
 let subClient;
-// --- END OF EDIT ---
 
 const app = express();
 const server = http.createServer(app);
@@ -39,10 +37,8 @@ io.use((socket, next) => {
 });
 
 async function setupRedisAdapter() {
-  // --- START OF EDIT: کلاینت‌ها به متغیرهای بیرونی مقداردهی می‌شوند ---
   pubClient = createClient({ url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}` });
   subClient = pubClient.duplicate();
-  // --- END OF EDIT ---
 
   await Promise.all([pubClient.connect(), subClient.connect()]);
 
@@ -126,7 +122,6 @@ app.get('/api/features/initial', isUser, async (req, res) => {
 io.on('connection', socket => {
   console.log(`Socket connected: ${socket.id}`);
 
-  // --- START of Radio Logic (EDITED for Redis) ---
   socket.on('join-radio', () => {
     socket.join('radio-listeners');
     console.log(`Socket ${socket.id} joined the radio room.`);
@@ -138,13 +133,13 @@ io.on('connection', socket => {
   });
 
   socket.on('start-broadcast', async () => {
-    await pubClient.set('radio:isLive', 'true'); // ذخیره وضعیت در Redis
+    await pubClient.set('radio:isLive', 'true');
     io.emit('radio-started');
     console.log(`Broadcast started by admin (socket ${socket.id})`);
   });
 
   socket.on('stop-broadcast', async () => {
-    await pubClient.del('radio:isLive'); // حذف کلید وضعیت از Redis
+    await pubClient.del('radio:isLive');
     io.emit('radio-stopped');
     console.log(`Broadcast stopped by admin (socket ${socket.id})`);
   });
@@ -153,14 +148,12 @@ io.on('connection', socket => {
     io.to('radio-listeners').emit('audio-stream', audioChunk);
   });
 
-  // رویداد جدید برای گرفتن وضعیت فعلی رادیو از Redis
   socket.on('get-radio-status', async (callback) => {
     if (typeof callback === 'function') {
       const status = await pubClient.get('radio:isLive');
-      callback(status === 'true'); // ارسال وضعیت خوانده شده از Redis
+      callback(status === 'true');
     }
   });
-  // --- END of Radio Logic (EDITED for Redis) ---
 
   socket.on('joinAdminRoom', () => {
     if (socket.request.session.adminId) {

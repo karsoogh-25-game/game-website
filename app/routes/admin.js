@@ -28,11 +28,7 @@ module.exports = (io) => {
   // محتواها
   router.use('/api/training', require('./training')(io));
 
-  // --- START OF FIX: این خط روت‌های جدید را به پنل ادمین متصل می‌کند ---
-  // این خط به روتر ادمین می‌گوید که هر درخواستی به /api/features را
-  // به فایل adminFeatures.js که قبلا ساختیم، ارسال کند.
   router.use('/api/features', require('./adminFeatures'));
-  // --- END OF FIX ---
 
   return router;
 };

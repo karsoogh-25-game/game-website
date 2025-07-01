@@ -3,15 +3,12 @@ const express = require('express');
 const router  = express.Router();
 const ctrl    = require('../controllers/groupController');
 
-// برگشت اطلاعات گروه من (member + role + group)
 router.get('/my',       ctrl.getMyGroup);
 
-// ** مسیری که برای انتقال امتیاز اضافه کردیم **
 router.post('/transfer', ctrl.transfer);
 router.post('/mentor/transfer', ctrl.mentorTransfer);
 router.get('/name/:code', ctrl.getGroupNameByCode);
 
-// بقیه‌ی مسیرها
 router.get('/ranking',     ctrl.getRanking);
 router.post('/create',     ctrl.createGroup);
 router.post('/add-member', ctrl.addMember);

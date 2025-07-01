@@ -9,14 +9,14 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // group logic
   const groupArea = document.getElementById('group-area');
-  let currentGroupId = null; // برای نگهداری شناسه گروه فعلی جهت مدیریت اتاق سوکت
+  let currentGroupId = null;
 
   async function loadMyGroup(){
     cardScore.textContent = '—';
     cardGroup.textContent = '—';
     cardRank.textContent = '—';
     cardAnnouncements.textContent = '—';
-    setLoadingState(true);  // فعال کردن اسپینر
+    setLoadingState(true);
 
     if (currentGroupId) {
       window.socket.emit('leaveGroupRoom', currentGroupId);
@@ -25,12 +25,9 @@ document.addEventListener('DOMContentLoaded', function(){
 
     try {
       const r = await axios.get('/api/groups/my');
-      // r.data.member: آیا عضو گروه است؟
-      // r.data.role: 'user' | 'leader' | 'mentor'
       if (!r.data.member) {
-        // FIX: Handle mentor role explicitly to prevent errors
         if (r.data.role === 'mentor') {
-          renderMentorBank(); // A function to render mentor-specific view
+          renderMentorBank();
         } else {
           renderNotMember();
         }
@@ -47,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function(){
         }
       }
 
-      // اعلان‌ها (بهینه شده)
       try {
         const resA = await axios.get('/api/announcements/latest');
         if (resA.data && resA.data.title) {
@@ -61,11 +57,11 @@ document.addEventListener('DOMContentLoaded', function(){
       }
 
     } catch(err){
-      console.error('Error loading group status:', err); // Improved error logging
+      console.error('Error loading group status:', err);
       groupArea.innerHTML = `<p class="error text-center">خطا در بارگذاری وضعیت گروه: ${err.response?.data?.message || err.message}</p>`;
       sendNotification('error', 'خطا در بارگذاری وضعیت گروه');
     } finally {
-      setLoadingState(false);  // غیرفعال کردن اسپینر
+      setLoadingState(false);
     }
   }
 
@@ -180,7 +176,6 @@ document.addEventListener('DOMContentLoaded', function(){
         <p id="group-error" class="error text-center"></p>
       </div>`;
 
-    // --- START OF EDIT: افزودن Event Listenerها فقط در صورتی که دکمه‌ها وجود داشته باشند ---
     const btnLeave = document.getElementById('btn-leave');
     if (btnLeave) {
       btnLeave.onclick = async () => {
@@ -220,7 +215,6 @@ document.addEventListener('DOMContentLoaded', function(){
         });
       };
     }
-    // --- END OF EDIT ---
   }
 
   function renderMentorBank(){
@@ -236,16 +230,12 @@ document.addEventListener('DOMContentLoaded', function(){
   window.socket.on('groupDeleted', renderNotMember);
   window.socket.on('bankUpdate', loadMyGroup);
 
-  // --- START OF EDIT: گوش دادن به آپدیت قابلیت‌ها ---
   document.addEventListener('feature-flags-loaded', () => {
-    // اگر کاربر در حال مشاهده صفحه گروه است، آن را دوباره رندر کن تا دکمه‌ها آپدیت شوند.
     const activeSection = document.querySelector('.content-section.active');
     if (activeSection && activeSection.id === 'groups') {
       loadMyGroup();
     }
   });
-  // --- END OF EDIT ---
-
 
   // Notifications button handler
   document.getElementById('btn-notifications').addEventListener('click', e=>{
@@ -255,7 +245,6 @@ document.addEventListener('DOMContentLoaded', function(){
     showSection('announcements');
   });
 
-  // Refresh button handler and auto-click
   const btnRefresh = document.getElementById('btn-refresh');
   btnRefresh.addEventListener('click', e=>{
     e.preventDefault();

@@ -5,14 +5,11 @@ const ctrl = require('../controllers/adminShopController');
 const path = require('path');
 const multer = require('multer');
 
-// --- START of EDIT: تنظیمات Multer برای آپلود عکس آیتم‌ها ---
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // فایل‌ها در پوشه public/uploads ذخیره می‌شوند
     cb(null, path.join(__dirname, '..', 'public', 'uploads'));
   },
   filename: (req, file, cb) => {
-    // یک نام منحصر به فرد برای فایل ایجاد می‌شود تا از تداخل جلوگیری شود
     const ext = path.extname(file.originalname);
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, `item-${uniqueSuffix}${ext}`);
@@ -21,9 +18,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // محدودیت حجم فایل: 5 مگابایت
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    // فقط فایل‌های تصویری مجاز هستند
     const filetypes = /jpeg|jpg|png|gif|webp/;
     const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
@@ -33,11 +29,9 @@ const upload = multer({
     cb(new Error('فقط فایل‌های تصویری مجاز هستند!'));
   }
 });
-// --- END of EDIT ---
 
 
 // --- روت‌های مدیریت ارزها ---
-// میان‌افزار آپلود به روت‌های ایجاد و ویرایش اضافه شد
 router.post('/currencies', upload.single('image'), ctrl.createCurrency);
 router.get('/currencies', ctrl.listCurrencies);
 router.put('/currencies/:id', upload.single('image'), ctrl.updateCurrency);

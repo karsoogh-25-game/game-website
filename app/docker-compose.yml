@@ -41,17 +41,11 @@ services:
       SESSION_SECRET: 'a-very-strong-and-secret-key-for-sessions'
       REDIS_HOST: 'redis_db'
       REDIS_PORT: 6379
-    # --- START of EDIT: افزودن Volume برای پوشه آپلود ---
     volumes:
-      # مسیر داخل کانتینر به یک Volume دائمی به نام app_uploads متصل می‌شود
-      # مسیر /usr/src/app/public/uploads مسیر استاندارد داخل کانتینر نود است
       - app_uploads:/usr/src/app/public/uploads
-    # --- END of EDIT ---
     entrypoint: ["/usr/local/bin/wait-for-it.sh", "redis_db:6379", "--", "/usr/local/bin/wait-for-it.sh", "mysql_db:3306", "--", "pm2-runtime", "app.js", "-i", "max"]
 
-# --- START of EDIT: تعریف Volume جدید ---
 volumes:
   mysql_data:
   redis_data:
-  app_uploads: # این Volume برای نگهداری دائمی فایل‌های آپلود شده است
-# --- END of EDIT ---
+  app_uploads:

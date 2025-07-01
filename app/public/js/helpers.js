@@ -1,4 +1,3 @@
-// نمایش/مخفی کردن اسپینر
 function setLoadingState(isLoading) {
   const spinnerElement = document.getElementById('loading-spinner');
   if (spinnerElement) {
@@ -6,7 +5,6 @@ function setLoadingState(isLoading) {
   }
 }
 
-// انیمیشن‌های Fade
 function fadeOutElement(el) {
   return new Promise(resolve => {
     el.classList.remove('fade-in');
@@ -23,7 +21,6 @@ function fadeInElement(el) {
   el.classList.add('fade-in');
 }
 
-// قرار دادن روی window برای دسترسی از سایر فایل‌ها
 window.setLoadingState = setLoadingState;
 window.fadeOutElement = fadeOutElement;
 window.fadeInElement = fadeInElement;

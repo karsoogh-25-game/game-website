@@ -1,5 +1,5 @@
 // app/seed.js
-const { User, sequelize } = require('./models');
+const { User, sequelize } = require('../models');
 
 function randomString(length) {
   const chars = 'abcdefghijklmnopqrstuvwxyz';
@@ -20,9 +20,6 @@ function randomDigits(length) {
 
 (async () => {
   try {
-    // اگر لازم داری جدول رو از اول بسازی:
-    // await sequelize.sync({ force: true });
-
     const NUM = 50;
     const users = [];
 
@@ -47,8 +44,6 @@ function randomDigits(length) {
         role
       });
     }
-
-    // bulkCreate فراخوانیِ hookِ beforeCreate رو هم انجام می‌ده (هَش کردن پسورد)
     await User.bulkCreate(users);
     console.log(`✅ ${NUM} کاربر رندوم با موفقیت ایجاد شد.`);
     process.exit(0);

@@ -33,13 +33,11 @@ document.addEventListener('DOMContentLoaded', function() {
       const shopData = shopRes.data;
       const myAssets = assetsRes.data;
 
-      // --- START of EDIT: بررسی وضعیت عضویت کاربر ---
       if (myAssets.notInGroup) {
         renderNotInGroupMessage();
-        return; // اجرای ادامه تابع متوقف می‌شود
+        return;
       }
-      // --- END of EDIT ---
-
+      
       renderMyAssets(myAssets);
       renderShopItems(shopData, myAssets);
 

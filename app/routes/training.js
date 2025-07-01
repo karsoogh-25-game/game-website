@@ -5,7 +5,6 @@ const path    = require('path');
 const multer  = require('multer');
 const { list, createOrUpdate, delete: del } = require('../controllers/contentController');
 
-// تنظیم multer برای آپلود
 const storage = multer.diskStorage({
   destination: path.join(__dirname,'..','public','uploads'),
   filename: (req,file,cb)=>{
@@ -21,7 +20,6 @@ router.get('/', list);
 
 // API ادمین
 module.exports = (io) => {
-  // داخل app.js با req.io = io ست شده
   router.post('/', upload.array('files'), createOrUpdate);
   router.post('/:id', upload.array('files'), createOrUpdate);
   router.delete('/:id', del);

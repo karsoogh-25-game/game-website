@@ -5,7 +5,6 @@ const ctrl = require('../controllers/adminUniqueItemController');
 const path = require('path');
 const multer = require('multer');
 
-// استفاده از همان تنظیمات multer که برای ارزها داشتیم
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, '..', 'public', 'uploads'));
@@ -31,7 +30,6 @@ const upload = multer({
   }
 });
 
-// تعریف روت‌های CRUD برای آیتم‌های خاص
 router.post('/', upload.single('image'), ctrl.createUniqueItem);
 router.get('/', ctrl.listUniqueItems);
 router.put('/:id', upload.single('image'), ctrl.updateUniqueItem);
