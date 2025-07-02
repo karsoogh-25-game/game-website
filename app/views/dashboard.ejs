@@ -72,6 +72,7 @@
              { id:'groups',    label:'گروه‌بندی', icon:'users' },
              { id:'bank',      label:'بانک', icon:'university' },
              { id:'shop',      label:'فروشگاه', icon:'store' },
+             { id:'question_bank', label:'بانک سوال', icon:'layer-group' }, // New Menu Item
              { id:'scoreboard',label:'جدول امتیازات', icon:'list-ol' },
              { id:'announcements',label:'اطلاعیه‌ها', icon:'bullhorn' },
              { id:'radio',     label:'رادیو', icon:'broadcast-tower' }
@@ -177,6 +178,32 @@
           <p class="text-gray-400 text-center py-6">در حال بارگذاری محتواها…</p>
         </div>
       </section>
+
+      <section id="question_bank" class="content-section hidden">
+        <div class="flex border-b border-gray-700 mb-4">
+            <button data-tab="qb-purchase" class="qb-tab-button active-tab py-2 px-4 text-gray-300 hover:text-white border-b-2 border-transparent hover:border-blue-500 focus:outline-none">خرید سوال</button>
+            <button data-tab="qb-my-questions" class="qb-tab-button py-2 px-4 text-gray-300 hover:text-white border-b-2 border-transparent hover:border-blue-500 focus:outline-none">سوالات من</button>
+            <button data-tab="qb-submit-combo" class="qb-tab-button py-2 px-4 text-gray-300 hover:text-white border-b-2 border-transparent hover:border-blue-500 focus:outline-none">ارسال کمبو</button>
+            <button data-tab="qb-history" class="qb-tab-button py-2 px-4 text-gray-300 hover:text-white border-b-2 border-transparent hover:border-blue-500 focus:outline-none">تاریخچه کمبو</button>
+        </div>
+
+        <div id="qb-purchase" class="qb-tab-content active-content">
+            <p class="text-gray-300 text-center py-4">در حال بارگذاری ویترین سوالات...</p>
+            <!-- Question showcases will be rendered here by JS -->
+        </div>
+        <div id="qb-my-questions" class="qb-tab-content hidden">
+            <p class="text-gray-300 text-center py-4">در حال بارگذاری سوالات خریداری شده...</p>
+            <!-- Purchased questions and answer upload section will be rendered here -->
+        </div>
+        <div id="qb-submit-combo" class="qb-tab-content hidden">
+            <p class="text-gray-300 text-center py-4">در حال بارگذاری سوالات آماده ارسال...</p>
+            <!-- UI for selecting questions and submitting combo -->
+        </div>
+        <div id="qb-history" class="qb-tab-content hidden">
+            <p class="text-gray-300 text-center py-4">در حال بارگذاری تاریخچه کمبوها...</p>
+            <!-- History of submitted combos and their status -->
+        </div>
+      </section>
         
       <section id="radio" class="content-section p-4"></section>
       </main>
@@ -195,6 +222,7 @@
   <script src="/js/bank.js"></script>
   <script src="/js/leaderboard.js"></script>
   <script src="/js/shop.js"></script>
+  <script src="/js/question-bank.js"></script> <!-- Added Question Bank JS -->
   <script src="/js/radio-listener.js"></script>
   </body>
 </html>

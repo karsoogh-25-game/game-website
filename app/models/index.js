@@ -34,6 +34,10 @@ db.Currency                = require('./currency')(sequelize, DataTypes);
 db.Wallet                  = require('./wallet')(sequelize, DataTypes);
 db.UniqueItem              = require('./uniqueItem')(sequelize, DataTypes);
 db.FeatureFlag             = require('./featureFlag')(sequelize, DataTypes);
+db.QuestionBankSetting     = require('./questionBankSetting')(sequelize, DataTypes);
+db.Question                = require('./question')(sequelize, DataTypes);
+db.PurchasedQuestion       = require('./purchasedQuestion')(sequelize, DataTypes);
+db.SubmittedCombo          = require('./submittedCombo')(sequelize, DataTypes);
 
 Object.values(db).forEach(model => {
   if (typeof model.associate === 'function') {

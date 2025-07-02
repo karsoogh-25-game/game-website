@@ -335,3 +335,17 @@ exports.getGroupNameByCode = async (req, res) => {
     return res.status(500).json({ message: 'خطای سرور' });
   }
 };
+
+exports.getMyGroupId = async (req, res) => {
+  const userId = req.session.userId;
+  try {
+    const membership = await GroupMember.findOne({ where: { userId }, attributes: ['groupId'] });
+    if (!membership) {
+      return res.status(404).json({ message: 'شما عضو هیچ گروهی نیستید.' });
+    }
+    res.json({ groupId: membership.groupId });
+  } catch (err) {
+    console.error('getMyGroupId error:', err);
+    res.status(500).json({ message: 'خطای سرور در دریافت شناسه گروه.' });
+  }
+};

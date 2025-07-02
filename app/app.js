@@ -69,6 +69,38 @@ function isUser(req, res, next) {
   res.redirect('/');
 }
 
+// Placeholder for a more sophisticated role check
+async function isAdminOrMentor(req, res, next) {
+  if (req.session.adminId) {
+    req.userRole = 'admin'; // Optional: set role for controller
+    return next();
+  }
+  if (req.session.userId) {
+    // This requires User model to be imported and queried
+    // For now, this is a simplified check.
+    // You'd typically fetch the user and check their role.
+    // const user = await User.findByPk(req.session.userId);
+    // if (user && user.role === 'mentor') {
+    //   req.userRole = 'mentor'; // Optional
+    //   return next();
+    // }
+    // Simplified: if it's a logged-in user but not admin, assume mentor for these routes for now
+    // THIS IS NOT SECURE FOR PRODUCTION and needs proper role checking based on your User model
+    // For the purpose of this example, we'll allow if userId exists and it's not an admin session
+    // This part MUST be replaced with actual role checking from your User model
+    // if (req.session.userId) { // Assuming any logged-in non-admin might be a mentor for now
+    //   return next();
+    // }
+  }
+  // If not admin and not a verified mentor, deny access
+  // res.status(403).json({ message: "دسترسی غیر مجاز." });
+  // For now, let's make it pass if adminId exists, otherwise fail for simplicity of this step.
+  // Proper mentor role check needs to be added based on User model structure.
+   if (req.session.adminId) return next(); // Temp: only admin passes until mentor role check is solid
+   res.status(403).json({ message: "دسترسی غیر مجاز برای این عملیات." });
+}
+
+
 app.get('/', (req, res) => res.render('auth'));
 app.use('/', require('./routes/auth'));
 
@@ -100,6 +132,17 @@ app.use('/api/shop/unique-items', isUser, shopUniqueItemsRouter);
 
 const groupRoutes = require('./routes/group');
 app.use('/api/groups', isUser, groupRoutes);
+
+// --- Question Bank Routes ---
+const adminQuestionBankRouter = require('./routes/adminQuestionBank');
+// Applying isAdminOrMentor or just isAdmin for now.
+// The routes within adminQuestionBank.js might need more granular checks if mentors have limited access.
+app.use('/admin/api/question-bank', isAdmin, adminQuestionBankRouter); // Using isAdmin for now. Replace with isAdminOrMentor if mentors access this.
+
+const questionBankUserRouter = require('./routes/questionBank');
+app.use('/api/question-bank', isUser, questionBankUserRouter);
+// --- End Question Bank Routes ---
+
 app.use('/dashboard', isUser, require('./routes/user'));
 
 app.get('/api/features/initial', isUser, async (req, res) => {
@@ -214,6 +257,7 @@ async function seedFeatureFlags() {
     { name: 'menu_training', displayName: 'منوی آموزش‌ها', isEnabled: true, category: 'menu' },
     { name: 'menu_announcements', displayName: 'منوی اطلاعیه‌ها', isEnabled: true, category: 'menu' },
     { name: 'menu_radio', displayName: 'منوی رادیو', isEnabled: true, category: 'menu' },
+    { name: 'menu_question_bank', displayName: 'منوی بانک سوال', isEnabled: true, category: 'menu' }, // New Feature Flag
     { name: 'action_group_leave', displayName: 'عملیات خروج از گروه', isEnabled: true, category: 'action' },
     { name: 'action_group_delete', displayName: 'عملیات حذف گروه (توسط سرگروه)', isEnabled: true, category: 'action' }
   ];
