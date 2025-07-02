@@ -271,8 +271,10 @@ async function seedFeatureFlags() {
   console.log('Feature flags seeded successfully.');
 }
 
-sequelize.sync().then(async () => {
-  console.log('Database synced successfully.');
+// Use { alter: true } for development to avoid ER_DUP_KEYNAME errors with indexes
+// IMPORTANT: Review this for production. Migrations are generally preferred.
+sequelize.sync({ alter: true }).then(async () => {
+  console.log('Database synced successfully (with alter:true).');
   await seedAdmin();
   await seedFeatureFlags();
   const port = process.env.PORT || 3000;
