@@ -565,7 +565,6 @@
         </div>
       </section>
 
-      <!-- بخش تصحیح سوالات (بانک سوال) -->
       <section id="question_bank_correction_section" v-show="activeSection==='question_bank_correction'" class="content-section" :class="{'active fade-in': activeSection==='question_bank_correction'}">
         <h2 class="text-2xl font-bold mb-4">تصحیح کمبوهای ارسالی</h2>
         <div v-if="!submissionsForCorrection.length" class="text-center py-4">
@@ -576,7 +575,7 @@
             <tr class="bg-gray-800 text-gray-300">
               <th>#</th>
               <th>شناسه کمبو</th>
-              <th v-if="isAdminUser">نام گروه</th> <!-- Show group name only for admin -->
+              <th v-if="isAdminUser">نام گروه</th>
               <th>تاریخ ارسال</th>
               <th>تعداد سوالات</th>
               <th>عملیات</th>
@@ -631,7 +630,6 @@
         </div>
       </section>
 
-      <!-- بخش تنظیمات بانک سوال (Admin Only) -->
       <section id="question_bank_settings_section" v-if="isAdminUser" v-show="activeSection==='question_bank_settings'" class="content-section" :class="{'active fade-in': activeSection==='question_bank_settings'}">
         <h2 class="text-2xl font-bold mb-4">تنظیمات بانک سوالات</h2>
         <div class="bg-gray-700 p-6 rounded-lg max-w-md mx-auto">

@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Groups', // Name of the table
+        model: 'Groups',
         key: 'id'
       }
     },
@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Questions', // Name of the table
+        model: 'Questions',
         key: 'id'
       }
     },
@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 'purchased',
       comment: 'وضعیت سوال خریداری شده: خریداری شده، جواب داده شده، برای تصحیح ارسال شده، تصحیح شده'
     },
-    correctionStatus: { // Individual correction status after combo correction
+    correctionStatus: {
       type: DataTypes.ENUM('pending', 'correct', 'incorrect'),
       allowNull: true,
       defaultValue: 'pending',
@@ -43,11 +43,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: 'مسیر فایل عکس یا PDF جواب آپلود شده توسط کاربر'
     },
-    submittedInComboId: { // To easily find which combo this question belongs to if submitted
+    submittedInComboId: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'SubmittedCombos', // Name of the table (will be created next)
+        model: 'SubmittedCombos',
         key: 'id'
       },
       onDelete: 'SET NULL',
@@ -60,7 +60,7 @@ module.exports = (sequelize, DataTypes) => {
       {
         unique: true,
         fields: ['groupId', 'questionId'],
-        name: 'unique_group_question' // Ensures a group cannot buy the same question twice
+        name: 'unique_group_question'
       }
     ]
   });

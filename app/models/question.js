@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       comment: 'امتیاز سوال'
     },
     color: {
-      type: DataTypes.STRING, // Store as hex code e.g., #FFB3BA
+      type: DataTypes.STRING,
       allowNull: false,
       comment: 'رنگ کارت سوال'
     },
@@ -40,7 +40,7 @@ module.exports = (sequelize, DataTypes) => {
     creatorId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      comment: 'شناسه کاربر (ادمین یا منتور) طراح سوال'
+      comment: 'شناسه کاربر طراح سوال'
     },
     creatorType: {
       type: DataTypes.ENUM('admin', 'mentor'),

@@ -4,7 +4,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// --- Multer Setup for Question Images ---
 const questionImageStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(__dirname, '..', 'public', 'uploads', 'question_images');
@@ -30,18 +29,12 @@ const uploadQuestionImage = multer({
     cb(new Error('فقط فایل‌های تصویری (jpeg, jpg, png) و PDF مجاز هستند.'));
   },
   limits: { fileSize: 10 * 1024 * 1024 } // 10 MB
-}).single('questionImage'); // 'questionImage' should be the name of the file input field in the form
+}).single('questionImage');
 
-// --- Helper Functions ---
 const getUserRole = (req) => {
   if (req.session.adminId) return 'admin';
-  if (req.session.userId) { // Assuming mentors log in as users with a 'mentor' role
-    // This part depends on how mentor identification is stored in the session.
-    // For now, let's assume req.user.role exists if a user is logged in.
-    // You'll need to adjust this based on your actual auth setup for mentors.
-    // const user = await User.findByPk(req.session.userId);
-    // if (user && user.role === 'mentor') return 'mentor';
-    return req.user && req.user.role === 'mentor' ? 'mentor' : null; // Placeholder
+  if (req.session.userId) {
+    return req.user && req.user.role === 'mentor' ? 'mentor' : null;
   }
   return null;
 };
@@ -51,7 +44,6 @@ const getUserId = (req) => {
 };
 
 
-// --- Question Management ---
 exports.createQuestion = async (req, res) => {
   uploadQuestionImage(req, res, async (err) => {
     if (err) {
@@ -63,11 +55,11 @@ exports.createQuestion = async (req, res) => {
     }
 
     const { name, points, color, price } = req.body;
-    const creatorType = getUserRole(req); // admin or mentor
-    const creatorId = getUserId(req); // ID of admin or mentor
+    const creatorType = getUserRole(req);
+    const creatorId = getUserId(req);
 
     if (!name || !points || !color || !price) {
-      fs.unlinkSync(req.file.path); // Delete uploaded file if validation fails
+      fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: 'تمام فیلدها (نام، امتیاز، رنگ، قیمت) الزامی هستند.' });
     }
     if (isNaN(parseInt(points)) || parseInt(points) <= 0) {
@@ -89,10 +81,10 @@ exports.createQuestion = async (req, res) => {
         creatorId,
         creatorType,
       });
-      req.app.get('io').emit('newQuestionAdded', question); // Notify clients
+      req.app.get('io').emit('newQuestionAdded', question);
       res.status(201).json(question);
     } catch (error) {
-      fs.unlinkSync(req.file.path); // Delete uploaded file on DB error
+      fs.unlinkSync(req.file.path);
       console.error('Error creating question:', error);
       res.status(500).json({ message: 'خطا در ایجاد سوال: ' + error.message });
     }
@@ -101,7 +93,6 @@ exports.createQuestion = async (req, res) => {
 
 exports.getQuestions = async (req, res) => {
   try {
-    // Add filtering/pagination if needed
     const questions = await Question.findAll({ order: [['createdAt', 'DESC']] });
     res.json(questions);
   } catch (error) {
@@ -128,12 +119,6 @@ exports.updateQuestion = async (req, res) => {
         return res.status(404).json({ message: 'سوال مورد نظر یافت نشد.' });
       }
 
-      // Authorization: Only creator or admin can update (or specific logic for mentors)
-      // if (updaterRole !== 'admin' && (question.creatorId !== updaterId || question.creatorType !== updaterRole)) {
-      //   if (req.file) fs.unlinkSync(req.file.path);
-      //   return res.status(403).json({ message: 'شما مجاز به ویرایش این سوال نیستید.' });
-      // }
-
       if (name) question.name = name;
       if (points) question.points = parseInt(points);
       if (color) question.color = color;
@@ -141,7 +126,6 @@ exports.updateQuestion = async (req, res) => {
       if (isActive !== undefined) question.isActive = (isActive === 'true' || isActive === true);
 
       if (req.file) {
-        // Delete old image if a new one is uploaded
         if (question.imagePath && fs.existsSync(path.join(__dirname, '..', 'public', question.imagePath))) {
           fs.unlinkSync(path.join(__dirname, '..', 'public', question.imagePath));
         }
@@ -149,7 +133,7 @@ exports.updateQuestion = async (req, res) => {
       }
 
       await question.save();
-      req.app.get('io').emit('questionUpdated', question); // Notify clients
+      req.app.get('io').emit('questionUpdated', question);
       res.json(question);
     } catch (error) {
       if (req.file) fs.unlinkSync(req.file.path);
@@ -175,17 +159,12 @@ exports.deleteQuestion = async (req, res) => {
     //   return res.status(403).json({ message: 'شما مجاز به حذف این سوال نیستید.' });
     // }
 
-    // Check if the question has been purchased by any group.
-    // If so, maybe deactivate it instead of deleting, or handle as per requirements.
     const purchases = await PurchasedQuestion.count({ where: { questionId: id } });
     if (purchases > 0) {
-      // Option 1: Deactivate instead of delete
       question.isActive = false;
       await question.save();
-      req.app.get('io').emit('questionUpdated', question); // Reflect deactivation
+      req.app.get('io').emit('questionUpdated', question);
       return res.status(400).json({ message: 'این سوال توسط گروه‌ها خریداری شده و قابل حذف نیست. به جای آن غیرفعال شد.' });
-      // Option 2: Prevent deletion (as implemented below)
-      // return res.status(400).json({ message: 'این سوال توسط گروه‌ها خریداری شده و قابل حذف نیست. ابتدا آن را غیرفعال کنید.' });
     }
 
     const imagePath = question.imagePath;
@@ -194,7 +173,7 @@ exports.deleteQuestion = async (req, res) => {
     if (imagePath && fs.existsSync(path.join(__dirname, '..', 'public', imagePath))) {
       fs.unlinkSync(path.join(__dirname, '..', 'public', imagePath));
     }
-    req.app.get('io').emit('questionDeleted', { id }); // Notify clients
+    req.app.get('io').emit('questionDeleted', { id });
     res.json({ message: 'سوال با موفقیت حذف شد.' });
   } catch (error) {
     console.error('Error deleting question:', error);
@@ -203,7 +182,6 @@ exports.deleteQuestion = async (req, res) => {
 };
 
 
-// --- Settings Management (Admin only) ---
 exports.getQuestionBankSettings = async (req, res) => {
   if (getUserRole(req) !== 'admin') {
     return res.status(403).json({ message: 'دسترسی غیرمجاز.' });
@@ -243,34 +221,23 @@ exports.updateQuestionBankSettings = async (req, res) => {
 };
 
 
-// --- Combo Correction (Admin/Mentor) ---
 exports.getSubmissionsForCorrection = async (req, res) => {
-  // Placeholder: Implement logic to fetch submissions.
-  // Admin sees all, Mentor sees only unassigned/specific ones.
-  // Consider adding a 'correctorAssignedId' to SubmittedCombo if mentors pick tasks.
   const userRole = getUserRole(req);
   try {
     let whereClause = { status: 'pending_correction' };
-    // if (userRole === 'mentor') {
-      // Add logic for mentors, e.g., where correctorId is null or matches mentor's ID
-      // whereClause.correctorId = null; // Or some other logic
-    // }
 
     const submissions = await SubmittedCombo.findAll({
       where: whereClause,
       include: [
         { model: sequelize.models.Group, as: 'group', attributes: ['id', 'name'] },
-        // Optionally include details of purchased questions for a summary view
       ],
       order: [['submissionDate', 'ASC']]
     });
 
-    // For mentors, we might need to hide group names until they open the submission.
-    // This logic can be handled here or on the client-side based on role.
     if (userRole === 'mentor') {
         submissions.forEach(sub => {
-            if (sub.group) { // If group is included
-                sub.setDataValue('group', { id: sub.group.id, name: 'پنهان شده' } ); // Mask group name
+            if (sub.group) {
+                sub.setDataValue('group', { id: sub.group.id, name: 'پنهان شده' } );
             }
         });
     }
@@ -291,7 +258,7 @@ exports.getSubmissionDetails = async (req, res) => {
         {
           model: sequelize.models.Group,
           as: 'group',
-          attributes: ['id', 'name'] // Group name needed for admin, maybe for mentor too
+          attributes: ['id', 'name']
         },
         {
           model: PurchasedQuestion,
@@ -305,10 +272,6 @@ exports.getSubmissionDetails = async (req, res) => {
       return res.status(404).json({ message: 'کمبوی مورد نظر یافت نشد.' });
     }
 
-    // If mentor, and group name was previously hidden, it's now revealed as they are viewing details.
-    // Or, if it should remain hidden, ensure it's not sent or handled on client.
-    // For now, we assume mentor can see group name upon opening details.
-
     res.json(submission);
   } catch (error) {
     console.error('Error fetching submission details:', error);
@@ -318,7 +281,7 @@ exports.getSubmissionDetails = async (req, res) => {
 
 exports.submitCorrection = async (req, res) => {
   const { comboId } = req.params;
-  const { corrections } = req.body; // corrections: [{ purchasedQuestionId: X, isCorrect: true/false }, ...]
+  const { corrections } = req.body;
   const correctorRole = getUserRole(req);
   const correctorId = getUserId(req);
 
@@ -356,7 +319,7 @@ exports.submitCorrection = async (req, res) => {
     let isSameColor = true;
     let firstColor = null;
     const correctionDetailsForCombo = [];
-    const submittedQuestionObjects = []; // To store question objects of CORRECT answers
+    const submittedQuestionObjects = [];
 
     for (const pq of combo.submittedQuestions) {
       const correctionInput = corrections.find(c => c.purchasedQuestionId === pq.id);
@@ -365,7 +328,7 @@ exports.submitCorrection = async (req, res) => {
         return res.status(400).json({ message: `وضعیت تصحیح برای سوال با شناسه ${pq.id} ارسال نشده.` });
       }
 
-      const currentQuestion = pq.question; // Store question object
+      const currentQuestion = pq.question;
 
       pq.correctionStatus = correctionInput.isCorrect ? 'correct' : 'incorrect';
       pq.status = 'corrected';
@@ -385,7 +348,6 @@ exports.submitCorrection = async (req, res) => {
       }
     }
 
-    // Calculate final awarded points based on combo rules
     let awardedPoints = 0;
     let multiplier = 1;
     const settings = await QuestionBankSetting.findOne({ transaction: t });
@@ -393,14 +355,12 @@ exports.submitCorrection = async (req, res) => {
     const sequentialComboMultiplierValue = settings ? settings.sequentialComboMultiplier : 4;
 
     if (combo.submittedQuestions.length === 3 && correctAnswersCount === 3) {
-      // All 3 questions are correct, now check for color and sequence
       const firstCorrectQuestionColor = submittedQuestionObjects[0].color;
       const allSameColor = submittedQuestionObjects.every(q => q.color === firstCorrectQuestionColor);
 
       if (allSameColor) {
         const points = submittedQuestionObjects.map(q => q.points).sort((a, b) => a - b);
         let isSequential = true;
-        // Check for sequence only if there are 3 points (meaning all 3 were correct)
         if (points.length === 3) {
             for (let i = 0; i < points.length - 1; i++) {
               if (points[i+1] - points[i] !== 1) {
@@ -409,21 +369,16 @@ exports.submitCorrection = async (req, res) => {
               }
             }
         } else {
-            isSequential = false; // Not enough correct questions for a sequential bonus
+            isSequential = false;
         }
 
-        if (isSequential) { // This implies allSameColor is true and points are sequential
+        if (isSequential) {
           multiplier = sequentialComboMultiplierValue;
-        } else { // allSameColor is true, but not sequential
+        } else {
           multiplier = comboMultiplierValue;
         }
       }
-      // If not allSameColor, multiplier remains 1 (implicit else)
     }
-    // For 1 or 2 card submissions, or if not all 3 are correct in a 3-card combo,
-    // or if 3 correct but not same color, multiplier remains 1.
-    // The awarded points will be totalBasePoints * 1.
-
     awardedPoints = totalBasePoints * multiplier;
 
     combo.awardedPoints = awardedPoints;
@@ -441,9 +396,7 @@ exports.submitCorrection = async (req, res) => {
     await t.commit();
 
     req.app.get('io').to(`group-${group.id}`).emit('comboCorrected', combo);
-    req.app.get('io').to('admins').emit('comboCorrectedAdmin', combo); // For admin panel to update list
-    // If mentors are in a specific room, emit to them too
-    // req.app.get('io').to('mentorsRoom').emit('comboCorrectedMentor', combo);
+    req.app.get('io').to('admins').emit('comboCorrectedAdmin', combo);
     req.app.get('io').emit('leaderboardUpdate');
 
 
@@ -455,15 +408,3 @@ exports.submitCorrection = async (req, res) => {
     res.status(500).json({ message: 'خطا در ثبت تصحیح: ' + error.message });
   }
 };
-
-// --- Helper to ensure mentor's `req.user.role` is populated if needed ---
-// This would typically be part of your authentication middleware for user routes.
-// exports.ensureUserRole = async (req, res, next) => {
-//   if (req.session.userId && !req.user) { // If userId in session but req.user not populated
-//     const user = await User.findByPk(req.session.userId);
-//     if (user) {
-//       req.user = user; // Populate req.user
-//     }
-//   }
-//   next();
-// };

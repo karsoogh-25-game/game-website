@@ -2,12 +2,11 @@
 const adminQuestionBankMixin = {
   data() {
     return {
-      // Data for Question Creation/Editing
       questionForm: {
         id: null,
         name: '',
         points: null,
-        color: '#FFB3BA', // Default to the first pastel color
+        color: '#FFB3BA',
         price: null,
         questionImage: null,
         imagePreview: null,
@@ -17,31 +16,26 @@ const adminQuestionBankMixin = {
       showQuestionFormModal: false,
       editingQuestion: false,
       pastelColors: [
-        { name: 'صورتی روشن', value: '#FFB3BA' }, { name: 'هلویی روشن', value: '#FFDFBA' },
-        { name: 'زرد لیمویی روشن', value: '#FFFFBA' }, { name: 'سبز نعنایی روشن', value: '#BAFFC9' },
-        { name: 'آبی آسمانی روشن', value: '#BAE1FF' }, { name: 'یاسی روشن', value: '#E0BBE4' },
-        { name: 'نارنجی پاستلی', value: '#FFDAC1' }, { name: 'سبز دریایی پاستلی', value: '#B5EAD7' },
-        { name: 'بنفش پاستلی', value: '#F0D9FF' }, { name: 'نیلی پاستلی', value: '#C9C9FF' }
+        { name: 'صورتی', value: '#FFB3BA' }, { name: 'هلویی', value: '#FFDFBA' },
+        { name: 'زرد لیمویی', value: '#FFFFBA' }, { name: 'سبز نعنایی', value: '#BAFFC9' },
+        { name: 'آبی آسمانی', value: '#BAE1FF' }, { name: 'یاسی', value: '#E0BBE4' },
+        { name: 'نارنجی', value: '#FFDAC1' }, { name: 'سبز دریایی', value: '#B5EAD7' },
+        { name: 'بنفش', value: '#F0D9FF' }, { name: 'نیلی', value: '#C9C9FF' }
       ],
 
-      // Data for Question Bank Settings (Admin only)
       questionBankSettings: {
         comboMultiplier: 2,
         sequentialComboMultiplier: 4,
       },
 
-      // Data for Combo Correction
       submissionsForCorrection: [],
       selectedSubmissionForDetails: null,
       showCorrectionModal: false,
-      correctionForm: { // For submitting individual question corrections within a combo
-        // purchasedQuestionId: null, isCorrect: true/false
-      },
-      currentCorrections: [], // Array of { purchasedQuestionId: X, isCorrect: true }
+      correctionForm: {},
+      currentCorrections: [],
     };
   },
   methods: {
-    // --- Question Management Methods ---
     async fetchQuestions() {
       this.setLoadingState(true);
       try {
@@ -66,8 +60,8 @@ const adminQuestionBankMixin = {
         points: question.points,
         color: question.color,
         price: question.price,
-        questionImage: null, // Will not pre-fill file input, handled separately
-        imagePreview: question.imagePath, // Show current image
+        questionImage: null,
+        imagePreview: question.imagePath,
         isActive: question.isActive,
       };
       this.showQuestionFormModal = true;
@@ -88,7 +82,7 @@ const adminQuestionBankMixin = {
     },
     async saveQuestion() {
       if (!this.questionForm.name || !this.questionForm.points || !this.questionForm.color || !this.questionForm.price) {
-        this.sendNotification('error', 'تمام فیلدهای ستاره‌دار الزامی هستند.');
+        this.sendNotification('error', 'تمام ورودی های ستاره‌دار الزامی هستند.');
         return;
       }
       if (!this.editingQuestion && !this.questionForm.questionImage) {
@@ -136,15 +130,8 @@ const adminQuestionBankMixin = {
                 this.setLoadingState(true);
                 try {
                     await axios.delete(`/admin/api/question-bank/questions/${question.id}`);
-                    // The backend might return the updated (deactivated) question or a success message
-                    // For now, we just refetch or filter locally
                     const index = this.questions.findIndex(q => q.id === question.id);
-                    // If the question was deactivated, the backend returns a specific message.
-                    // We might need to update it in the list instead of removing.
-                    // For a direct delete, we remove it.
-                    // Let's assume for now it's deleted or we refetch.
-                    // this.questions.splice(index, 1);
-                    this.fetchQuestions(); // Refetch to get the latest state
+                    this.fetchQuestions();
                     this.sendNotification('success', `سوال «${question.name}» با موفقیت پردازش (حذف/غیرفعال) شد.`);
                 } catch (error) {
                     this.sendNotification('error', `خطا در حذف سوال: ` + (error.response?.data?.message || error.message));
@@ -154,11 +141,8 @@ const adminQuestionBankMixin = {
             }
         });
     },
-
-    // --- Settings Management Methods (Admin only) ---
     async fetchQuestionBankSettings() {
-      // Ensure this is only called/available if user is admin (check in main admin.js or here)
-      if (this.userRole !== 'admin' && !this.isAdminUser) { // Assuming isAdminUser is a prop or computed property indicating admin
+      if (this.userRole !== 'admin' && !this.isAdminUser) {
           console.warn("Attempt to fetch question bank settings by non-admin blocked.");
           return;
       }
@@ -188,7 +172,6 @@ const adminQuestionBankMixin = {
       }
     },
 
-    // --- Combo Correction Methods ---
     async fetchSubmissionsForCorrection() {
       this.setLoadingState(true);
       try {
@@ -207,10 +190,10 @@ const adminQuestionBankMixin = {
         this.selectedSubmissionForDetails = response.data;
         this.currentCorrections = this.selectedSubmissionForDetails.submittedQuestions.map(sq => ({
           purchasedQuestionId: sq.id,
-          questionName: sq.question.name, // For display
-          questionImage: sq.question.imagePath, // For display
-          answerImage: sq.answerImagePath, // For display
-          isCorrect: null, // Default to null, admin must choose
+          questionName: sq.question.name,
+          questionImage: sq.question.imagePath,
+          answerImage: sq.answerImagePath,
+          isCorrect: null,
         }));
         this.showCorrectionModal = true;
       } catch (error) {
@@ -239,22 +222,16 @@ const adminQuestionBankMixin = {
         this.sendNotification('success', 'تصحیح کمبو با موفقیت ثبت شد.');
         this.showCorrectionModal = false;
         this.selectedSubmissionForDetails = null;
-        this.fetchSubmissionsForCorrection(); // Refresh list
+        this.fetchSubmissionsForCorrection();
       } catch (error) {
         this.sendNotification('error', 'خطا در ثبت تصحیح: ' + (error.response?.data?.message || error.message));
       } finally {
         this.setLoadingState(false);
       }
     },
-    // Utility to get user role - this might be better as a computed property or passed as a prop
-    // For now, it assumes `this.activeUserRole` is available from the main Vue instance if needed.
-    // Or, it relies on the main app's session/role check for API calls.
-    // The `isAdminUser` computed property in admin.js can be used for UI toggling.
-
-    // Socket listeners for real-time updates (to be added in main admin.js or here if self-contained)
     handleSocketUpdates_QuestionBank() {
         window.socket.on('newQuestionAdded', (question) => {
-            if (this.activeSection === 'question_bank_questions' || this.activeSection === 'question_bank_correction') { // Assuming these section keys
+            if (this.activeSection === 'question_bank_questions' || this.activeSection === 'question_bank_correction') {
                 this.questions.unshift(question);
             }
         });
@@ -270,34 +247,23 @@ const adminQuestionBankMixin = {
             }
         });
         window.socket.on('questionBankSettingsUpdated', (settings) => {
-            if (this.activeSection === 'question_bank_settings') { // Assuming this section key
+            if (this.activeSection === 'question_bank_settings') {
                 this.questionBankSettings = settings;
             }
         });
         window.socket.on('newComboForCorrection', (combo) => {
-            // This event is for admin/mentor panel
             if (this.activeSection === 'question_bank_correction') {
-                 // Add to list if not already present (or refresh list)
                  this.fetchSubmissionsForCorrection();
             }
-             // Potentially show a global notification for admins/mentors
-            if (this.isAdminUser || this.isMentorUser) { // Assuming these computed props exist
-                this.sendNotification('info', `یک کمبوی جدید با شناسه ${combo.id} برای تصحیح ارسال شد.`);
+            if (this.isAdminUser || this.isMentorUser) {
+                this.sendNotification('info', `یک کمبوی جدید با شماره ${combo.id} برای تصحیح ارسال شد.`);
             }
         });
-        window.socket.on('comboCorrectedAdmin', (combo) => { // Specific event for admin panel
+        window.socket.on('comboCorrectedAdmin', (combo) => {
             if (this.activeSection === 'question_bank_correction') {
                 this.submissionsForCorrection = this.submissionsForCorrection.filter(s => s.id !== combo.id);
             }
         });
     }
   },
-  // mounted() {
-    // if (this.userRole === 'admin') this.fetchQuestionBankSettings(); // Fetch settings if admin
-    // this.fetchQuestions();
-    // this.fetchSubmissionsForCorrection();
-    // this.handleSocketUpdates_QuestionBank();
-  // }
-  // The mounted hook logic will be better handled in the main admin.js
-  // when this mixin is used, based on the active section.
 };

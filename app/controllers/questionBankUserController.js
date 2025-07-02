@@ -4,7 +4,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// --- Multer Setup for Answer Files ---
 const answerFileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = path.join(__dirname, '..', 'public', 'uploads', 'answer_files');
@@ -21,7 +20,7 @@ const answerFileStorage = multer.diskStorage({
 const uploadAnswerFile = multer({
   storage: answerFileStorage,
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|pdf/; // Allowing images and PDF
+    const allowedTypes = /jpeg|jpg|png|pdf/;
     const mimetype = allowedTypes.test(file.mimetype);
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     if (mimetype && extname) {
@@ -29,10 +28,10 @@ const uploadAnswerFile = multer({
     }
     cb(new Error('فقط فایل‌های تصویری (jpeg, jpg, png) و PDF برای جواب مجاز هستند.'));
   },
-  limits: { fileSize: 15 * 1024 * 1024 } // 15 MB limit for answers
-}).single('answerFile'); // 'answerFile' should be the name of the file input field
+  limits: { fileSize: 15 * 1024 * 1024 }
+}).single('answerFile');
 
-// --- Helper: Get Group for User ---
+
 async function getGroupForUser(userId, transaction = null) {
   const groupMember = await GroupMember.findOne({ where: { userId }, transaction });
   if (!groupMember) {
@@ -46,7 +45,6 @@ async function getGroupForUser(userId, transaction = null) {
 }
 
 
-// --- Question Purchase and Viewing ---
 exports.getAvailableQuestions = async (req, res) => {
   try {
     const group = await getGroupForUser(req.session.userId);
@@ -58,9 +56,9 @@ exports.getAvailableQuestions = async (req, res) => {
     const availableQuestions = await Question.findAll({
       where: {
         isActive: true,
-        id: { [Op.notIn]: purchasedQuestionIds } // Exclude already purchased
+        id: { [Op.notIn]: purchasedQuestionIds }
       },
-      attributes: ['id', 'name', 'points', 'color', 'price'], // Only show necessary info for storefront
+      attributes: ['id', 'name', 'points', 'color', 'price'],
       order: [['color', 'ASC'], ['price', 'ASC']]
     });
     res.json(availableQuestions);
@@ -94,7 +92,6 @@ exports.purchaseQuestion = async (req, res) => {
       return res.status(400).json({ message: 'امتیاز گروه شما برای خرید این سوال کافی نیست.' });
     }
 
-    // Check if already purchased (double check, though getAvailableQuestions should prevent this)
     const existingPurchase = await PurchasedQuestion.findOne({
         where: { groupId: group.id, questionId: question.id },
         transaction: t
@@ -117,7 +114,7 @@ exports.purchaseQuestion = async (req, res) => {
 
     io.to(`group-${group.id}`).emit('questionPurchased', { questionId: question.id, newScore: group.score, purchasedQuestion });
     io.to('admins').emit('questionPurchasedAdminNotif', { groupId: group.id, groupName: group.name, questionName: question.name });
-    io.emit('leaderboardUpdate'); // Group score changed
+    io.emit('leaderboardUpdate');
 
     res.json({ success: true, message: 'سوال با موفقیت خریداری شد.', newScore: group.score, purchasedQuestion });
 
@@ -134,7 +131,7 @@ exports.getPurchasedQuestions = async (req, res) => {
     const purchasedQuestions = await PurchasedQuestion.findAll({
       where: {
         groupId: group.id,
-        status: { [Op.in]: ['purchased', 'answered'] } // Only those not yet submitted in a combo
+        status: { [Op.in]: ['purchased', 'answered'] }
       },
       include: [{ model: Question, as: 'question', attributes: ['id', 'name', 'points', 'color'] }],
       order: [['purchaseDate', 'DESC']]
@@ -152,13 +149,12 @@ exports.getQuestionDetails = async (req, res) => {
     const group = await getGroupForUser(req.session.userId);
     const purchasedQuestion = await PurchasedQuestion.findOne({
       where: { id: purchasedQuestionId, groupId: group.id },
-      include: [{ model: Question, as: 'question' }] // Include full question details
+      include: [{ model: Question, as: 'question' }]
     });
 
     if (!purchasedQuestion) {
       return res.status(404).json({ message: 'سوال خریداری شده یافت نشد.' });
     }
-    // Do not show if already submitted in a combo and awaiting correction, or corrected
     if (purchasedQuestion.status === 'submitted_for_correction' || purchasedQuestion.status === 'corrected') {
         return res.status(403).json({ message: 'این سوال قبلا برای تصحیح ارسال شده است.' });
     }
@@ -171,7 +167,6 @@ exports.getQuestionDetails = async (req, res) => {
 };
 
 
-// --- Answer Management ---
 exports.uploadAnswer = (req, res) => {
   uploadAnswerFile(req, res, async (err) => {
     if (err) {
@@ -194,7 +189,7 @@ exports.uploadAnswer = (req, res) => {
       });
 
       if (!purchasedQuestion) {
-        fs.unlinkSync(req.file.path); // Delete uploaded file
+        fs.unlinkSync(req.file.path);
         await t.rollback();
         return res.status(404).json({ message: 'سوال خریداری شده یافت نشد.' });
       }
@@ -204,7 +199,6 @@ exports.uploadAnswer = (req, res) => {
         return res.status(400).json({ message: 'نمی‌توانید برای سوالی که ارسال یا تصحیح شده، جواب آپلود کنید.' });
       }
 
-      // Delete old answer file if exists
       if (purchasedQuestion.answerImagePath && fs.existsSync(path.join(__dirname, '..', 'public', purchasedQuestion.answerImagePath))) {
         fs.unlinkSync(path.join(__dirname, '..', 'public', purchasedQuestion.answerImagePath));
       }
@@ -257,7 +251,7 @@ exports.deleteAnswer = async (req, res) => {
     }
 
     purchasedQuestion.answerImagePath = null;
-    purchasedQuestion.status = 'purchased'; // Revert status if answer is deleted
+    purchasedQuestion.status = 'purchased';
     await purchasedQuestion.save({ transaction: t });
 
     await t.commit();
@@ -272,20 +266,17 @@ exports.deleteAnswer = async (req, res) => {
 };
 
 
-// --- Combo Submission ---
 exports.getAnsweredQuestions = async (req, res) => {
-  // This is similar to getPurchasedQuestions but specifically for 'answered' status
-  // and might be used by the "Submit Combo" UI.
   try {
     const group = await getGroupForUser(req.session.userId);
     const answeredQuestions = await PurchasedQuestion.findAll({
       where: {
         groupId: group.id,
-        status: 'answered', // Only those with an uploaded answer, not yet submitted
+        status: 'answered',
         answerImagePath: { [Op.ne]: null }
       },
       include: [{ model: Question, as: 'question', attributes: ['id', 'name', 'points', 'color'] }],
-      order: [['updatedAt', 'DESC']] // Show recently answered ones first
+      order: [['updatedAt', 'DESC']]
     });
     res.json(answeredQuestions);
   } catch (error) {
@@ -295,7 +286,7 @@ exports.getAnsweredQuestions = async (req, res) => {
 };
 
 exports.submitCombo = async (req, res) => {
-  const { purchasedQuestionIds } = req.body; // Expecting an array of 1 to 3 purchasedQuestion IDs
+  const { purchasedQuestionIds } = req.body;
   const userId = req.session.userId;
   const io = req.app.get('io');
 
@@ -307,7 +298,6 @@ exports.submitCombo = async (req, res) => {
   try {
     const group = await getGroupForUser(userId, t);
 
-    // Verify all selected purchased questions belong to the group and are in 'answered' state
     const questionsToSubmit = await PurchasedQuestion.findAll({
       where: {
         id: { [Op.in]: purchasedQuestionIds },
@@ -322,14 +312,11 @@ exports.submitCombo = async (req, res) => {
       await t.rollback();
       return res.status(400).json({ message: 'یک یا چند سوال از سوالات انتخابی معتبر نیستند یا قبلا ارسال شده‌اند یا جوابی برای آنها ثبت نشده.' });
     }
-
-    // Create the combo
     const newCombo = await SubmittedCombo.create({
       groupId: group.id,
       status: 'pending_correction'
     }, { transaction: t });
 
-    // Update status of purchased questions and link them to the combo
     for (const pq of questionsToSubmit) {
       pq.status = 'submitted_for_correction';
       pq.submittedInComboId = newCombo.id;
@@ -347,10 +334,7 @@ exports.submitCombo = async (req, res) => {
 
 
     io.to(`group-${group.id}`).emit('comboSubmitted', fullComboData);
-    // Notify admin/mentors about the new submission
-    io.to('admins').emit('newComboForCorrection', fullComboData); // Or a more generic 'adminPanelUpdate'
-    // io.to('mentorsRoom').emit('newComboForCorrection', fullComboData);
-
+    io.to('admins').emit('newComboForCorrection', fullComboData);
 
     res.status(201).json({ success: true, message: 'کمبو با موفقیت برای تصحیح ارسال شد.', combo: fullComboData });
 
@@ -369,7 +353,7 @@ exports.getSubmittedCombos = async (req, res) => {
       include: [{
         model: PurchasedQuestion,
         as: 'submittedQuestions',
-        attributes: ['id', 'answerImagePath', 'correctionStatus'], // Only necessary details
+        attributes: ['id', 'answerImagePath', 'correctionStatus'],
         include: [{ model: Question, as: 'question', attributes: ['name', 'points', 'color'] }]
       }],
       order: [['submissionDate', 'DESC']]

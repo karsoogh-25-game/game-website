@@ -20,10 +20,9 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     tableName: 'QuestionBankSettings',
-    timestamps: true // To track when settings were last updated
+    timestamps: true 
   });
 
-  // Seed default settings
   QuestionBankSetting.afterSync(async () => {
     const count = await QuestionBankSetting.count();
     if (count === 0) {

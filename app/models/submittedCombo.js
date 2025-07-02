@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Groups', // Name of the table
+        model: 'Groups',
         key: 'id'
       }
     },
@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.NOW
     },
     correctionDetails: {
-      type: DataTypes.JSON, // [{ purchasedQuestionId: X, status: 'correct'/'incorrect', points: Y }, ...]
+      type: DataTypes.JSON,
       allowNull: true,
       comment: 'جزئیات تصحیح هر سوال در کمبو'
     },
@@ -35,24 +35,24 @@ module.exports = (sequelize, DataTypes) => {
     },
     awardedPoints: {
       type: DataTypes.INTEGER,
-      allowNull: true, // Null until corrected
+      allowNull: true,
       comment: 'امتیاز نهایی کسب شده از این کمبو'
     },
     correctorId: {
       type: DataTypes.INTEGER,
-      allowNull: true, // Null until corrected
+      allowNull: true,  
       comment: 'شناسه کاربر (ادمین یا منتور) تصحیح کننده'
     },
     correctorType: {
       type: DataTypes.ENUM('admin', 'mentor'),
-      allowNull: true, // Null until corrected
+      allowNull: true,  
       comment: 'نوع کاربر تصحیح کننده'
     },
     correctionDate: {
       type: DataTypes.DATE,
-      allowNull: true // Null until corrected
+      allowNull: true  
     },
-    correctionNotes: { // Optional notes from the corrector
+    correctionNotes: {
         type: DataTypes.TEXT,
         allowNull: true
     }
@@ -63,7 +63,6 @@ module.exports = (sequelize, DataTypes) => {
 
   SubmittedCombo.associate = function(models) {
     SubmittedCombo.belongsTo(models.Group, { foreignKey: 'groupId', as: 'group' });
-    // A combo has many purchased questions that were submitted as part of it
     SubmittedCombo.hasMany(models.PurchasedQuestion, { foreignKey: 'submittedInComboId', as: 'submittedQuestions' });
     // SubmittedCombo.belongsTo(models.User, { foreignKey: 'correctorId', constraints: false, as: 'correctorDetails' });
   };

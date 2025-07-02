@@ -1,6 +1,5 @@
 // app/public/js/question-bank.js
 document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM Elements ---
     const questionBankSection = document.getElementById('question_bank');
     const purchaseTabContent = document.getElementById('qb-purchase');
     const myQuestionsTabContent = document.getElementById('qb-my-questions');
@@ -9,17 +8,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabButtons = document.querySelectorAll('.qb-tab-button');
     const headerRefreshButton = document.getElementById('btn-refresh');
 
-    let currentGroupId = null; // Will be fetched with assets or group info
-    const pastelColors = [ // Should match admin panel for consistency if needed by name
-        { name: 'صورتی روشن', value: '#FFB3BA' }, { name: 'هلویی روشن', value: '#FFDFBA' },
-        { name: 'زرد لیمویی روشن', value: '#FFFFBA' }, { name: 'سبز نعنایی روشن', value: '#BAFFC9' },
-        { name: 'آبی آسمانی روشن', value: '#BAE1FF' }, { name: 'یاسی روشن', value: '#E0BBE4' },
-        { name: 'نارنجی پاستلی', value: '#FFDAC1' }, { name: 'سبز دریایی پاستلی', value: '#B5EAD7' },
-        { name: 'بنفش پاستلی', value: '#F0D9FF' }, { name: 'نیلی پاستلی', value: '#C9C9FF' }
+    let currentGroupId = null;
+    const pastelColors = [
+        { name: 'صورتی', value: '#FFB3BA' }, { name: 'هلویی', value: '#FFDFBA' },
+        { name: 'زرد لیمویی', value: '#FFFFBA' }, { name: 'سبز نعنایی', value: '#BAFFC9' },
+        { name: 'آبی آسمانی', value: '#BAE1FF' }, { name: 'یاسی', value: '#E0BBE4' },
+        { name: 'نارنجی', value: '#FFDAC1' }, { name: 'سبز دریایی', value: '#B5EAD7' },
+        { name: 'بنفش', value: '#F0D9FF' }, { name: 'نیلی', value: '#C9C9FF' }
     ];
 
-
-    // --- Tab Management ---
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             tabButtons.forEach(btn => btn.classList.remove('active-tab', 'border-blue-500'));
@@ -29,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetTabId = button.dataset.tab;
             document.getElementById(targetTabId).classList.remove('hidden');
 
-            // Load content for the activated tab
             switch (targetTabId) {
                 case 'qb-purchase':
                     loadAvailableQuestions();
@@ -51,11 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tabElement.innerHTML = `<p class="text-gray-300 text-center py-4">${message}</p>`;
     }
 
-    // --- API Calls & Rendering ---
-
-    // 1. Purchase Tab
     async function loadAvailableQuestions() {
-        showLoading(purchaseTabContent, 'در حال بارگذاری ویترین سوالات...');
+        showLoading(purchaseTabContent, 'در حال بارگذاری سوالات...');
         try {
             const response = await axios.get('/api/question-bank/questions/available');
             const questionsByColor = response.data.reduce((acc, q) => {
@@ -105,12 +98,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.question-card').forEach(card => {
             const buyButton = card.querySelector('.buy-btn');
             card.addEventListener('click', (e) => {
-                if (e.target === buyButton) { // If the button itself was clicked
+                if (e.target === buyButton) {
                     handlePurchase(card.dataset.questionId, card.dataset.price, card.style.backgroundColor);
-                } else { // If card area (not the button) was clicked
-                    // Hide all other buy buttons
+                } else {
                     document.querySelectorAll('.question-card .buy-btn').forEach(btn => btn.classList.add('hidden'));
-                    // Show this card's buy button
                     buyButton.classList.remove('hidden');
                 }
             });
@@ -120,12 +111,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handlePurchase(questionId, price, color) {
         sendConfirmationNotification('confirm', `آیا از خرید این سوال به قیمت ${price} امتیاز اطمینان دارید؟`, async (confirmed) => {
             if (confirmed) {
-                setLoadingState(true); // Global loading spinner
+                setLoadingState(true);
                 try {
                     const response = await axios.post('/api/question-bank/questions/purchase', { questionId });
                     sendNotification('success', response.data.message);
-                    loadAvailableQuestions(); // Refresh showcase
-                    // Potentially update other tabs if needed (e.g., My Questions)
+                    loadAvailableQuestions();
                 } catch (error) {
                     sendNotification('error', `خطا در خرید: ${error.response?.data?.message || error.message}`);
                 } finally {
@@ -135,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. My Questions Tab
     async function loadPurchasedQuestions() {
         showLoading(myQuestionsTabContent, 'در حال بارگذاری سوالات خریداری شده...');
         try {
@@ -261,9 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sendNotification('success', response.data.message);
             uploadStatus.textContent = 'آپلود موفقیت‌آمیز بود.';
             uploadStatus.className = 'text-xs mt-2 text-green-400';
-            // Refresh modal content and "My Questions" tab
-            loadPurchasedQuestions(); // Refresh the list in the background
-            const updatedPq = await axios.get(`/api/question-bank/questions/purchased/${purchasedQuestionId}`); // Get updated details for modal
+            loadPurchasedQuestions();
+            const updatedPq = await axios.get(`/api/question-bank/questions/purchased/${purchasedQuestionId}`);
             renderQuestionModal(updatedPq.data);
         } catch (error) {
             sendNotification('error', `خطا در آپلود: ${error.response?.data?.message || error.message}`);
@@ -281,8 +269,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await axios.delete(`/api/question-bank/answers/${purchasedQuestionId}/delete`);
                     sendNotification('success', 'جواب با موفقیت حذف شد.');
-                    loadPurchasedQuestions(); // Refresh the list
-                    const updatedPq = await axios.get(`/api/question-bank/questions/purchased/${purchasedQuestionId}`); // Get updated details for modal
+                    loadPurchasedQuestions();
+                    const updatedPq = await axios.get(`/api/question-bank/questions/purchased/${purchasedQuestionId}`);
                     renderQuestionModal(updatedPq.data);
                 } catch (error) {
                      sendNotification('error', `خطا در حذف جواب: ${error.response?.data?.message || error.message}`);
@@ -298,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedForCombo = [];
     async function loadAnsweredQuestionsForCombo() {
         showLoading(submitComboTabContent, 'در حال بارگذاری سوالات پاسخ داده شده...');
-        selectedForCombo = []; // Reset selection
+        selectedForCombo = [];
         try {
             const response = await axios.get('/api/question-bank/combos/answered-questions');
             const questions = response.data;
@@ -349,12 +337,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const index = selectedForCombo.findIndex(item => item.id === purchasedId);
 
-                if (index > -1) { // Already selected, de-select
+                if (index > -1) {
                     selectedForCombo.splice(index, 1);
                     card.classList.remove('border-green-500', 'selected-for-combo');
                     card.classList.add('border-transparent');
                     card.style.opacity = "1";
-                } else { // Not selected, select if less than 3
+                } else {
                     if (selectedForCombo.length < 3) {
                         selectedForCombo.push({id: purchasedId, name: questionName});
                         card.classList.add('border-green-500', 'selected-for-combo');
@@ -401,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     sendNotification('success', response.data.message);
                     selectedForCombo = []; // Clear selection
                     loadAnsweredQuestionsForCombo(); // Refresh this tab
-                    loadPurchasedQuestions(); // Refresh "My Questions" as their status changed
+                    loadPurchasedQuestions(); // Refresh "My Questions"
                     loadSubmittedCombosHistory(); // Refresh history
                 } catch (error) {
                     sendNotification('error', `خطا در ارسال کمبو: ${error.response?.data?.message || error.message}`);
@@ -412,8 +400,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
-    // 4. History Tab
     async function loadSubmittedCombosHistory() {
         showLoading(historyTabContent, 'در حال بارگذاری تاریخچه کمبوها...');
         try {
@@ -428,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let html = '<div class="space-y-4">';
             combos.forEach(combo => {
                 let statusText = '';
-                let statusColor = 'text-yellow-400'; // Default for pending
+                let statusColor = 'text-yellow-400';
                 switch(combo.status) {
                     case 'pending_correction': statusText = 'در انتظار تصحیح'; break;
                     case 'corrected': statusText = `تصحیح شده - امتیاز: ${combo.awardedPoints}`; statusColor = 'text-green-400'; break;
@@ -441,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 html += `
                     <div class="bg-gray-700 p-4 rounded-lg shadow">
                         <div class="flex justify-between items-center mb-2">
-                            <h5 class="font-semibold text-white">کمبو شناسه: ${combo.id}</h5>
+                            <h5 class="font-semibold text-white">کمبو: ${combo.id}</h5>
                             <span class="text-sm ${statusColor}">${statusText}</span>
                         </div>
                         <p class="text-xs text-gray-400">تاریخ ارسال: ${new Date(combo.submissionDate).toLocaleString('fa-IR')}</p>
@@ -469,18 +455,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- Socket Event Handlers ---
     function setupSocketListeners() {
         if (!window.socket) return;
 
         window.socket.on('connect', () => {
-            // If group ID is known, join group room for targeted updates
             if (currentGroupId) {
                 window.socket.emit('joinGroupRoom', currentGroupId);
             }
         });
 
-        // Listen for group ID if fetched elsewhere (e.g. group.js)
         document.addEventListener('groupInfoLoaded', (event) => {
             if (event.detail && event.detail.groupId) {
                 currentGroupId = event.detail.groupId;
@@ -491,66 +474,60 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
 
-        window.socket.on('newQuestionAdded', (question) => { // From admin panel
+        window.socket.on('newQuestionAdded', (question) => {
             if (document.getElementById('qb-purchase')?.classList.contains('active-content')) {
-                loadAvailableQuestions(); // Refresh showcase
+                loadAvailableQuestions();
             }
         });
-        window.socket.on('questionUpdated', (question) => { // From admin panel (e.g., price change, deactivation)
+        window.socket.on('questionUpdated', (question) => {
              if (document.getElementById('qb-purchase')?.classList.contains('active-content')) {
                 loadAvailableQuestions();
             }
-            // Could also affect "My Questions" if a purchased question's details change, though less likely.
         });
-        window.socket.on('questionDeleted', ({ id }) => { // From admin panel
+        window.socket.on('questionDeleted', ({ id }) => {
             if (document.getElementById('qb-purchase')?.classList.contains('active-content')) {
                 loadAvailableQuestions();
             }
         });
 
-        window.socket.on('questionPurchased', (data) => { // For this group
-            // data: { questionId, newScore, purchasedQuestion }
+        window.socket.on('questionPurchased', (data) => {
             if (document.getElementById('qb-purchase')?.classList.contains('active-content')) {
-                loadAvailableQuestions(); // Refresh showcase as one item is gone
+                loadAvailableQuestions();
             }
             if (document.getElementById('qb-my-questions')?.classList.contains('active-content')) {
-                loadPurchasedQuestions(); // Add to my questions
+                loadPurchasedQuestions();
             }
-            // Update score display if available (e.g., in dashboard header or main cards)
             const scoreCard = document.getElementById('card-score');
             if (scoreCard) scoreCard.textContent = data.newScore;
         });
 
-        window.socket.on('answerUploaded', (purchasedQuestion) => { // For this group
+        window.socket.on('answerUploaded', (purchasedQuestion) => {
             if (document.getElementById('qb-my-questions')?.classList.contains('active-content')) {
-                loadPurchasedQuestions(); // Refresh to show 'answered' status
+                loadPurchasedQuestions();
             }
             if (document.getElementById('qb-submit-combo')?.classList.contains('active-content')) {
-                loadAnsweredQuestionsForCombo(); // Might become available for combo
+                loadAnsweredQuestionsForCombo();
             }
-            // If modal is open for this question, refresh it
             const modal = document.getElementById('view-question-modal');
             if (modal && !modal.classList.contains('hidden')) {
                 const uploadBtn = modal.querySelector('#upload-answer-btn');
                 if (uploadBtn && parseInt(uploadBtn.dataset.purchasedId) === purchasedQuestion.id) {
-                    renderQuestionModal(purchasedQuestion); // Re-render modal with new data
+                    renderQuestionModal(purchasedQuestion);
                 }
             }
         });
 
-        window.socket.on('answerDeleted', (data) => { // data: { purchasedQuestionId, status }
+        window.socket.on('answerDeleted', (data) => {
              if (document.getElementById('qb-my-questions')?.classList.contains('active-content')) {
                 loadPurchasedQuestions();
             }
             if (document.getElementById('qb-submit-combo')?.classList.contains('active-content')) {
-                loadAnsweredQuestionsForCombo(); // Might be removed from combo candidates
+                loadAnsweredQuestionsForCombo();
             }
-             // If modal is open for this question, refresh it
             const modal = document.getElementById('view-question-modal');
             if (modal && !modal.classList.contains('hidden')) {
-                const uploadBtn = modal.querySelector('#upload-answer-btn'); // Check against any element with the ID
+                const uploadBtn = modal.querySelector('#upload-answer-btn');
                 if (uploadBtn && parseInt(uploadBtn.dataset.purchasedId) === data.purchasedQuestionId) {
-                    // Need to refetch the purchasedQuestion data to update modal correctly
                      axios.get(`/api/question-bank/questions/purchased/${data.purchasedQuestionId}`)
                         .then(response => renderQuestionModal(response.data))
                         .catch(err => console.error("Error refetching for modal after delete", err));
@@ -558,42 +535,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        window.socket.on('comboSubmitted', (combo) => { // For this group
+        window.socket.on('comboSubmitted', (combo) => {
              if (document.getElementById('qb-submit-combo')?.classList.contains('active-content')) {
-                loadAnsweredQuestionsForCombo(); // Submitted questions are removed
+                loadAnsweredQuestionsForCombo();
             }
             if (document.getElementById('qb-my-questions')?.classList.contains('active-content')) {
-                loadPurchasedQuestions(); // Status of those questions changed
+                loadPurchasedQuestions();
             }
             if (document.getElementById('qb-history')?.classList.contains('active-content')) {
-                loadSubmittedCombosHistory(); // New combo added to history
+                loadSubmittedCombosHistory();
             }
         });
 
-        window.socket.on('comboCorrected', (combo) => { // For this group
+        window.socket.on('comboCorrected', (combo) => {
             if (document.getElementById('qb-history')?.classList.contains('active-content')) {
-                loadSubmittedCombosHistory(); // Update status and points
+                loadSubmittedCombosHistory();
             }
-            // Update group score display
             const scoreCard = document.getElementById('card-score');
-            if (scoreCard && combo.group && typeof combo.group.score !== 'undefined') { // Assuming group score is part of combo data or fetched
-                // This needs the backend to send the updated group score, or we need to fetch it.
-                // For now, let's assume awardedPoints is what we add to the current displayed score if possible.
-                // Or better, trigger a generic score update event from server.
+            if (scoreCard && combo.group && typeof combo.group.score !== 'undefined') {
             }
              if (document.getElementById('qb-my-questions')?.classList.contains('active-content')) {
-                loadPurchasedQuestions(); // Status of questions within combo changes to 'corrected'
+                loadPurchasedQuestions();
             }
             sendNotification('success', `کمبوی شما (ID: ${combo.id}) تصحیح شد و ${combo.awardedPoints} امتیاز کسب کردید!`);
         });
     }
 
 
-    // --- Initialization & Event Listeners ---
     function initQuestionBank() {
         if (!questionBankSection) return;
 
-        // Determine if this section is active on page load
         const isActiveOnLoad = document.querySelector('.menu-item.active')?.dataset.section === 'question_bank';
         const currentVisibleTab = questionBankSection.querySelector('.qb-tab-button.active-tab')?.dataset.tab;
 
@@ -606,10 +577,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Listen for tab activation via main dashboard logic
         document.querySelectorAll('.menu-item[data-section="question_bank"]').forEach(item => {
             item.addEventListener('click', () => {
-                // When question_bank section is clicked, load the default/currently active sub-tab
                 const activeSubTab = questionBankSection.querySelector('.qb-tab-button.active-tab')?.dataset.tab || 'qb-purchase';
                  switch (activeSubTab) {
                     case 'qb-purchase': loadAvailableQuestions(); break;
@@ -620,7 +589,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Header refresh button
         headerRefreshButton.addEventListener('click', () => {
             if (document.querySelector('.content-section.active')?.id === 'question_bank') {
                 const activeSubTab = questionBankSection.querySelector('.qb-tab-button.active-tab')?.dataset.tab;
@@ -637,12 +605,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setupSocketListeners();
     }
-
-    // Auto-initialize if feature flag is enabled and element exists
-    // Assuming feature flag 'menu_question_bank' is checked by EJS to render the section
     if (document.getElementById('question_bank')) {
-         // Try to get group ID early for socket room joining
-        axios.get('/api/groups/my-group-id') // A new simple endpoint to just get groupId
+        axios.get('/api/groups/my-group-id')
             .then(response => {
                 if (response.data && response.data.groupId) {
                     currentGroupId = response.data.groupId;
@@ -656,7 +620,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// CSS for custom scrollbar (if not already globally defined)
 const style = document.createElement('style');
 style.textContent = `
   .custom-scrollbar::-webkit-scrollbar {
