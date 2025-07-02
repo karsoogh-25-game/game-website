@@ -10,6 +10,9 @@ const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const { sequelize, Admin, GroupMember, FeatureFlag } = require('./models');
 
+// **توجه**: ماژول‌های AdminJS دیگر در اینجا require نمی‌شوند تا از خطا جلوگیری شود.
+// آنها به صورت داینامیک در تابع start ایمپورت خواهند شد.
+
 let pubClient;
 let subClient;
 
@@ -271,16 +274,53 @@ async function seedFeatureFlags() {
   console.log('Feature flags seeded successfully.');
 }
 
-// Using simple sync() temporarily after manual FK drops by scripts.
-// This will attempt to create missing tables/indexes without altering existing ones.
-// IMPORTANT: After one successful run, consider reverting to { alter: true } for further development
-// or implement a proper migration strategy.
+const start = async () => {
+    // --- **اصلاح ۱**: استفاده از import() داینامیک برای حل مشکل ESM ---
+    const { default: AdminJS } = await import('adminjs');
+    const { default: AdminJSExpress } = await import('@adminjs/express');
+    const { default: AdminJSSequelize } = await import('@adminjs/sequelize');
+
+    AdminJS.registerAdapter({
+        Resource: AdminJSSequelize.Resource,
+        Database: AdminJSSequelize.Database,
+    });
+    
+    const db = require('./models');
+
+    const adminJs = new AdminJS({
+        resources: [
+            db.User, db.Admin, db.Group, db.GroupMember,
+            db.Currency, db.Wallet, db.UniqueItem, db.Question,
+            db.PurchasedQuestion, db.SubmittedCombo, db.Announcement,
+            db.AnnouncementAttachment, db.Content, db.ContentAttachment,
+            db.FeatureFlag, db.QuestionBankSetting
+        ],
+        rootPath: '/super-admin', 
+        branding: {
+            companyName: 'LIGAUK Super User Panel',
+            softwareBrothers: false,
+        },
+    });
+
+    // --- **اصلاح ۲**: حذف سیستم لاگین مستقل AdminJS و استفاده از سیستم لاگین خود برنامه ---
+    // به جای `buildAuthenticatedRouter` از `buildRouter` استفاده می‌کنیم
+    const adminJsRouter = AdminJSExpress.buildRouter(adminJs);
+    
+    // پنل جدید را با همان میدل‌ور `isAdmin` که برای پنل /admin استفاده می‌شود، امن می‌کنیم
+    app.use(adminJs.options.rootPath, isAdmin, adminJsRouter);
+
+    console.log(`AdminJS (Super User Panel) is available at http://localhost:${process.env.PORT || 3000}${adminJs.options.rootPath}`);
+    
+    const port = process.env.PORT || 3000;
+    server.listen(port, () => console.log(`Server is listening on port ${port}`));
+};
+
+
 sequelize.sync().then(async () => {
   console.log('Database synced successfully (with simple sync()).');
   await seedAdmin();
   await seedFeatureFlags();
-  const port = process.env.PORT || 3000;
-  server.listen(port, () => console.log(`Server is listening on port ${port}`));
+  start();
 }).catch(err => {
     console.error('Failed to sync database:', err);
 });
