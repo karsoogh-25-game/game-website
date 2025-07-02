@@ -12,8 +12,8 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
   pool: {
     max: 50,
     min: 10,
-    acquire: 30000,
-    idle: 10000
+    acquire: 60000, // Increased from 30000
+    idle: 30000    // Increased from 10000
   }
 });
 
