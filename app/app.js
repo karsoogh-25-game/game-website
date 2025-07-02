@@ -271,10 +271,12 @@ async function seedFeatureFlags() {
   console.log('Feature flags seeded successfully.');
 }
 
-// Use { alter: true } for development to avoid ER_DUP_KEYNAME errors with indexes
-// IMPORTANT: Review this for production. Migrations are generally preferred.
-sequelize.sync({ alter: true }).then(async () => {
-  console.log('Database synced successfully (with alter:true).');
+// Using simple sync() temporarily after manual FK drops by scripts.
+// This will attempt to create missing tables/indexes without altering existing ones.
+// IMPORTANT: After one successful run, consider reverting to { alter: true } for further development
+// or implement a proper migration strategy.
+sequelize.sync().then(async () => {
+  console.log('Database synced successfully (with simple sync()).');
   await seedAdmin();
   await seedFeatureFlags();
   const port = process.env.PORT || 3000;
