@@ -49,21 +49,37 @@ class GameEngine {
                 if (adjacentX < 0 || adjacentX >= mapSize || adjacentY < 0 || adjacentY >= mapSize) {
                     isExternal = true;
                 } else {
-                    const adjacentTile = await Tile.findOne({
+                const adjacentTile = await Tile.findOne({ // کاشی همسایه را با تمام فیلدهایش، از جمله isDestroyed، بخوان
                         where: { MapId: this.mapId, x: adjacentX, y: adjacentY }
                     });
-                    if (!adjacentTile || adjacentTile.OwnerGroupId === null) {
+
+                // شرط جدید: دیوار خارجی است اگر کاشی همسایه وجود نداشته باشد (بعید) یا نابود شده باشد
+                if (!adjacentTile) { // این حالت نباید در یک نقشه سالم رخ دهد
+                    this.log(`هشدار: کاشی همسایه در موقعیت (${adjacentX},${adjacentY}) برای کاشی (${tile.x},${tile.y}) یافت نشد.`);
+                    isExternal = true; // به عنوان خارجی در نظر گرفته شود برای ایمنی
+                } else if (adjacentTile.isDestroyed) {
+                    this.log(`کاشی همسایه (${adjacentX},${adjacentY}) برای دیوار ${wall.direction} از کاشی (${tile.x},${tile.y}) نابود شده است. دیوار خارجی است.`);
                         isExternal = true;
+                } else {
+                    // کاشی همسایه وجود دارد و نابود نشده است (چه مالک داشته باشد چه نداشته باشد)
+                    // پس دیوار فعلی، داخلی است نسبت به این همسایه.
+                    this.log(`کاشی همسایه (${adjacentX},${adjacentY}) برای دیوار ${wall.direction} از کاشی (${tile.x},${tile.y}) سالم است (isDestroyed=false). دیوار داخلی است.`);
+                    isExternal = false;
                     }
                 }
 
                 if (isExternal) {
+                const ownerGroupName = tile.ownerGroup ? tile.ownerGroup.name : (tile.OwnerGroupId === null ? "بدون مالک" : "مالک نامشخص");
                     externalWalls.push({ wall, tile }); // wall instance now includes its deployedAmmunitions
-                    this.log(`دیوار خارجی شناسایی شد: Tile (${tile.x},${tile.y}), Wall ID ${wall.id} (${wall.direction}), Owner: ${tile.ownerGroup.name}`);
+                this.log(`دیوار خارجی شناسایی شد: Tile (${tile.x},${tile.y}), Wall ID ${wall.id} (${wall.direction}), Owner: ${ownerGroupName}`);
                 }
             }
         }
+    if (externalWalls.length === 0) {
+        this.log("هیچ دیوار خارجی فعالی در این موج حمله شناسایی نشد.");
+    } else {
         this.log(`تعداد ${externalWalls.length} دیوار خارجی شناسایی شد.`);
+    }
         return externalWalls;
     }
 
@@ -110,27 +126,55 @@ class GameEngine {
                 await wall.save();
 
                 if (wall.health <= 0) {
-                    this.log(`دیوار ID ${wall.id} نابود شد. ملک (${ownerTile.x},${ownerTile.y}) مالک خود را از دست می‌دهد.`);
+                    this.log(`دیوار ID ${wall.id} نابود شد. کاشی (${ownerTile.x},${ownerTile.y}) اکنون نابود شده تلقی می‌شود.`);
                     const previousOwnerId = ownerTile.OwnerGroupId;
-                    ownerTile.OwnerGroupId = null;
+
+                    ownerTile.OwnerGroupId = null; // چه مالک داشته چه نداشته، دیگر مالک ندارد
+                    ownerTile.isDestroyed = true; // علامت‌گذاری به عنوان نابود شده
+                    // ownerTile.price = 0; // یا هر مقدار دیگری که نشان‌دهنده عدم قابلیت خرید باشد (اختیاری، isDestroyed مهمتر است)
                     await ownerTile.save();
 
-                    const destroyedWallIds = (await Wall.findAll({where: {TileId: ownerTile.id}, attributes: ['id']})).map(w => w.id);
-                    if(destroyedWallIds.length > 0) {
-                        await DeployedAmmunition.destroy({where: {WallId: {[Op.in]: destroyedWallIds}}});
+                    // حذف تمام مهمات روی تمام دیوارهای این کاشی (دیوارها در مرحله بعد حذف می‌شوند)
+                    const allWallsOfTile = await Wall.findAll({where: {TileId: ownerTile.id}, attributes: ['id']});
+                    const allWallIdsOfTile = allWallsOfTile.map(w => w.id);
+                    if (allWallIdsOfTile.length > 0) {
+                        await DeployedAmmunition.destroy({ where: { WallId: { [Op.in]: allWallIdsOfTile } } });
                     }
-                    await Wall.destroy({where: {TileId: ownerTile.id}});
+                    // حذف تمام دیوارهای این کاشی
+                    await Wall.destroy({ where: { TileId: ownerTile.id } });
+                    this.log(`تمام دیوارهای کاشی ID ${ownerTile.id} حذف شدند.`);
 
-                    this.io.emit('tile-lost', { mapId: this.mapId, tileId: ownerTile.id, x: ownerTile.x, y: ownerTile.y, previousOwnerId });
+                    // ارسال ایونت به کلاینت که کاشی نابود شده است
+                    this.io.emit('tile-destroyed', {
+                        mapId: this.mapId,
+                        tileId: ownerTile.id,
+                        x: ownerTile.x,
+                        y: ownerTile.y,
+                        isDestroyed: true, // ارسال وضعیت جدید
+                        ownerGroupId: null // ارسال وضعیت جدید مالکیت
+                        // previousOwnerId: previousOwnerId // اگر لازم باشد کلاینت بداند مالک قبلی که بوده
+                    });
+                    this.log(`کاشی ID ${ownerTile.id} در (${ownerTile.x},${ownerTile.y}) نابود شد و وضعیت به کلاینت‌ها اعلام گردید.`);
 
-                    const remainingTiles = await Tile.count({ where: { OwnerGroupId: previousOwnerId, MapId: this.mapId } });
-                    if (remainingTiles === 0 && previousOwnerId) {
-                        this.log(`گروه ID ${previousOwnerId} (${ownerTile.ownerGroup.name}) تمام املاک خود را از دست داد.`);
-                        this.io.emit('group-eliminated', { mapId: this.mapId, groupId: previousOwnerId, groupName: ownerTile.ownerGroup.name });
+                    // بررسی حذف گروه اگر این کاشی آخرین کاشی گروه بوده
+                    if (previousOwnerId) { // فقط اگر قبلا مالک داشته
+                        const remainingTiles = await Tile.count({
+                            where: {
+                                OwnerGroupId: previousOwnerId,
+                                MapId: this.mapId,
+                                isDestroyed: false // فقط کاشی‌های سالم و با مالکیت گروه را بشمار
+                            }
+                        });
+                        if (remainingTiles === 0) {
+                            const group = await Group.findByPk(previousOwnerId);
+                            const groupName = group ? group.name : 'ناشناس';
+                            this.log(`گروه ID ${previousOwnerId} (${groupName}) تمام املاک قابل استفاده خود را از دست داد.`);
+                            this.io.emit('group-eliminated', { mapId: this.mapId, groupId: previousOwnerId, groupName: groupName });
+                        }
                     }
                 }
             }
-            remainingPowerOverall -= (powerForThisWall - remainingAttackPowerOnWall); // Subtract actual damage dealt by this wall's processing
+            // دیگر نیازی به remainingPowerOverall نیست چون آسیب تقسیم نمی‌شود.
         }
         this.log("پردازش آسیب به دیوارها تکمیل شد.");
     }

@@ -13,6 +13,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 100 // Default price, can be changed by admin
+    },
+    isDestroyed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: 'True if the tile has been destroyed by an attack and is no longer part of the game functionally.'
     }
     // OwnerGroupId will be added via association
     // MapId will be added via association
