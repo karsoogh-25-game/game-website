@@ -186,17 +186,52 @@ exports.executeNextAttackWave = async (req, res) => {
         if (!map) return res.status(404).json({ message: "نقشه یافت نشد" });
         if (!map.isActive) return res.status(400).json({ message: "نقشه فعال نیست" });
 
+        // قفل کردن نقشه قبل از اجرای دستی حمله
+        if (!map.gameLocked) {
+            map.gameLocked = true;
+            await map.save();
+            req.io.emit('game-locked', { mapId: map.id, gameLocked: true });
+            console.log(`[AdminGameController] نقشه ID ${map.id} برای اجرای دستی حمله قفل شد.`);
+        }
+
         const gameEngine = new GameEngine(mapId, req.io);
-        const result = await gameEngine.executeNextAttack();
+        const result = await gameEngine.executeNextAttack(); // این متد خودش نقشه را پس از حمله باز می‌کند
 
         if (!result || !result.wave) {
+            // اگر حمله اجرا نشد (مثلا موجی برای اجرا نبود)، ممکن است بخواهیم نقشه را باز کنیم اگر خودمان قفل کرده بودیم
+            // اما executeNextAttack اگر موجی پیدا نکند، خودش نقشه را باز نمی‌کند.
+            // بنابراین، اگر ما نقشه را قفل کردیم و حمله اجرا نشد، باید آن را باز کنیم.
+            if (map.gameLocked) { // بررسی اینکه آیا هنوز قفل است
+                const currentMapForUnlock = await GameMap.findByPk(mapId); // دریافت وضعیت فعلی
+                if (currentMapForUnlock && currentMapForUnlock.gameLocked) {
+                    currentMapForUnlock.gameLocked = false;
+                    await currentMapForUnlock.save();
+                    req.io.emit('game-locked', { mapId: map.id, gameLocked: false });
+                    console.log(`[AdminGameController] نقشه ID ${map.id} پس از عدم اجرای حمله دستی (موجی یافت نشد) باز شد.`);
+                }
+            }
             return res.status(404).json({ message: result.message || "موج حمله بعدی برای اجرا یافت نشد یا هم اکنون قابل اجرا نیست." });
         }
 
+        // اگر حمله موفق بود، executeNextAttack خودش نقشه را باز کرده و emit کرده است.
         res.status(200).json({ message: `موج حمله (ID: ${result.wave.id}) با موفقیت اجرا شد.`, report: result.report });
 
     } catch (error) {
-        console.error("Error executing attack wave:", error);
+        console.error("Error executing attack wave manually:", error);
+        // در صورت بروز خطا حین اجرای حمله، executeNextAttack وضعیت قفل را تغییر نمی‌دهد.
+        // بهتر است اینجا هم نقشه را باز کنیم اگر توسط این تابع قفل شده بود.
+        // برای اطمینان، وضعیت فعلی نقشه را می‌خوانیم.
+        try {
+            const mapOnError = await GameMap.findByPk(mapId);
+            if (mapOnError && mapOnError.gameLocked) {
+                mapOnError.gameLocked = false;
+                await mapOnError.save();
+                req.io.emit('game-locked', { mapId: mapId, gameLocked: false });
+                console.log(`[AdminGameController] نقشه ID ${mapId} پس از خطا در اجرای دستی حمله، باز شد.`);
+            }
+        } catch (unlockError) {
+            console.error(`[AdminGameController] Error unlocking map ID ${mapId} after manual execution error:`, unlockError);
+        }
         res.status(500).json({ message: error.message || "خطا در اجرای موج حمله." });
     }
 };

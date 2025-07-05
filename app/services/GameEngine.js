@@ -208,70 +208,124 @@ class GameEngine {
             await nextWave.save({ transaction });
             this.log(`موج حمله ID: ${nextWave.id} به عنوان اجرا شده علامت‌گذاری شد.`);
 
-            if (!map.gameLocked) {
-                map.gameLocked = true;
-                await map.save({ transaction });
-                this.log("اولین حمله اجرا شد. بازی برای این نقشه قفل شد (gameLocked = true).");
-                this.io.emit('game-locked', { mapId: this.mapId, gameLocked: true });
-            }
+            // منطق قفل دائمی نقشه پس از اولین حمله از اینجا حذف شد.
+            // gameLocked اکنون برای قفل موقت قبل و حین حمله استفاده می‌شود.
 
-            await transaction.commit();
+            await transaction.commit(); // تغییرات موج حمله و آسیب‌ها ثبت می‌شوند.
             this.log("موج حمله با موفقیت اجرا و ثبت شد.");
+
+            // پس از اجرای موفقیت آمیز حمله، نقشه را باز می کنیم.
+            // این کار پس از transaction.commit انجام می‌شود تا اگر خطایی در بالا رخ داد، نقشه باز نشود.
+            try {
+                const currentMapState = await GameMap.findByPk(this.mapId);
+                if (currentMapState && currentMapState.gameLocked) {
+                    currentMapState.gameLocked = false;
+                    await currentMapState.save(); // ذخیره در یک تراکنش جدید یا بدون تراکنش
+                    this.log(`نقشه ID: ${this.mapId} پس از حمله باز شد.`);
+                    this.io.emit('game-locked', { mapId: this.mapId, gameLocked: false });
+                }
+            } catch (unlockError) {
+                console.error(`[GameEngine MapID: ${this.mapId}] Error unlocking map after attack:`, unlockError);
+                this.log(`خطا در باز کردن نقشه پس از حمله: ${unlockError.message}`);
+                // حتی اگر باز کردن نقشه با خطا مواجه شود، نتیجه اصلی حمله موفقیت آمیز بوده است.
+            }
 
             const updatedMapData = await require('../controllers/GameController').getFullMapState(this.mapId);
             if(updatedMapData) this.io.emit('map-updated', { map: updatedMapData });
 
-
             return { success: true, wave: nextWave.toJSON(), report: this.attackReport };
 
         } catch (error) {
-            await transaction.rollback();
+            await transaction.rollback(); // Rollback a تراکنش اصلی در صورت خطا در اجرای حمله
             console.error(`[GameEngine MapID: ${this.mapId}] Error executing attack wave:`, error);
             this.log(`خطا در اجرای موج حمله: ${error.message} ${error.stack}`);
+            // در صورت خطا، ممکن است بخواهیم نقشه را باز کنیم اگر قبلاً قفل شده بود،
+            // اما این بستگی به منطق قفل کردن در مراحل بالاتر (زمانبند یا کنترلر دستی) دارد.
+            // فعلاً، اگر حمله با خطا مواجه شود، وضعیت قفل نقشه بدون تغییر باقی می‌ماند.
             return { success: false, message: `خطا در اجرای موج حمله: ${error.message}`, report: this.attackReport };
         }
     }
 
     static attackSchedulerInterval = null;
     static ioInstance = null;
+    static PRE_ATTACK_LOCK_WINDOW_MS = 30 * 1000; // 30 ثانیه
+    static SCHEDULER_INTERVAL_MS = 10 * 1000; // 10 ثانیه
 
     static startAttackScheduler(io) {
         GameEngine.ioInstance = io;
         if (GameEngine.attackSchedulerInterval) {
-            console.log("[GameEngine Scheduler] Scheduler already running.");
+            console.log("[GameEngine Scheduler] زمان‌بند در حال اجرا است.");
             return;
         }
-        console.log("[GameEngine Scheduler] Starting attack scheduler (every 60 seconds)...");
+        console.log(`[GameEngine Scheduler] شروع به کار زمان‌بند (هر ${GameEngine.SCHEDULER_INTERVAL_MS / 1000} ثانیه)...`);
         GameEngine.attackSchedulerInterval = setInterval(async () => {
             if (!GameEngine.ioInstance) {
-                console.error("[GameEngine Scheduler] IO instance is not available for scheduler.");
+                console.error("[GameEngine Scheduler] نمونه IO برای زمان‌بند در دسترس نیست.");
                 return;
             }
-            // console.log("[GameEngine Scheduler] Tick: Checking for pending attacks...");
+            // console.log("[GameEngine Scheduler] تیک: بررسی حملات در انتظار...");
             const activeMaps = await GameMap.findAll({ where: { isActive: true } });
+            const now = new Date();
 
             for (const map of activeMaps) {
-                const pendingWavesCount = await AttackWave.count({
-                    where: {
-                        MapId: map.id,
-                        isExecuted: false,
-                        attackTime: { [Op.lte]: new Date() }
-                    }
-                });
+                try {
+                    // 1. اجرای امواجی که زمانشان فرا رسیده است
+                    const dueAttackWaves = await AttackWave.findAll({
+                        where: {
+                            MapId: map.id,
+                            isExecuted: false,
+                            attackTime: { [Op.lte]: now }
+                        },
+                        order: [['attackTime', 'ASC']] // اجرای قدیمی‌ترین‌ها اول
+                    });
 
-                if (pendingWavesCount > 0) {
-                    console.log(`[GameEngine Scheduler] ${pendingWavesCount} pending attack(s) found for map ${map.id} (${map.name}). Triggering execution.`);
-                    const engine = new GameEngine(map.id, GameEngine.ioInstance);
-                    try {
-                         // Intentionally not awaiting to allow parallel execution for different maps if needed,
-                         // but be mindful of resource contention. For now, await might be safer.
-                        await engine.executeNextAttack();
-                    } catch (error) {
-                        console.error(`[GameEngine Scheduler] Error auto-executing attack for map ${map.id}:`, error);
+                    for (const wave of dueAttackWaves) {
+                        // اگر نقشه هنوز قفل نشده (مثلا توسط منطق پیش قفل)، آن را قبل از حمله قفل کن
+                        if (!map.gameLocked) {
+                            map.gameLocked = true;
+                            await map.save();
+                            GameEngine.ioInstance.emit('game-locked', { mapId: map.id, gameLocked: true });
+                            console.log(`[GameEngine Scheduler] نقشه ID ${map.id} بلافاصله قبل از اجرای حمله ID ${wave.id} قفل شد.`);
+                        }
+
+                        console.log(`[GameEngine Scheduler] ${dueAttackWaves.length} موج حمله موعد رسیده برای نقشه ${map.id} (${map.name}) یافت شد. اجرای موج ID: ${wave.id}`);
+                        const engine = new GameEngine(map.id, GameEngine.ioInstance);
+                        await engine.executeNextAttack(); // این متد خودش نقشه را پس از حمله باز می‌کند
+                        // پس از باز شدن نقشه توسط executeNextAttack، وضعیت map.gameLocked باید بروز شود
+                        // برای بررسی در حلقه بعدی یا برای منطق پیش-قفل.
+                        const updatedMap = await GameMap.findByPk(map.id);
+                        if (updatedMap) {
+                            map.gameLocked = updatedMap.gameLocked; // بروزرسانی وضعیت قفل نقشه
+                        }
                     }
+
+                    // 2. بررسی و قفل کردن نقشه‌ها برای امواجی که به زودی اجرا می‌شوند
+                    if (!map.gameLocked) { // فقط اگر نقشه در حال حاضر باز است، برای قفل پیش از موعد بررسی کن
+                        const upcomingAttackTimeLimit = new Date(now.getTime() + GameEngine.PRE_ATTACK_LOCK_WINDOW_MS);
+                        const nextImminentWave = await AttackWave.findOne({
+                            where: {
+                                MapId: map.id,
+                                isExecuted: false,
+                                attackTime: {
+                                    [Op.gt]: now, // زمان حمله هنوز نرسیده
+                                    [Op.lte]: upcomingAttackTimeLimit // اما در پنجره ۳۰ ثانیه‌ای ما قرار دارد
+                                }
+                            },
+                            order: [['attackTime', 'ASC']]
+                        });
+
+                        if (nextImminentWave) {
+                            console.log(`[GameEngine Scheduler] موج حمله ID ${nextImminentWave.id} برای نقشه ${map.id} در ${GameEngine.PRE_ATTACK_LOCK_WINDOW_MS / 1000} ثانیه آینده شناسایی شد. قفل کردن نقشه.`);
+                            map.gameLocked = true;
+                            await map.save();
+                            GameEngine.ioInstance.emit('game-locked', { mapId: map.id, gameLocked: true });
+                        }
+                    }
+                } catch (error) {
+                    console.error(`[GameEngine Scheduler] خطا در پردازش نقشه ${map.id} (${map.name}):`, error);
                 }
             }
-        }, 60000); // Check every 60 seconds
+        }, GameEngine.SCHEDULER_INTERVAL_MS);
     }
 
     static stopAttackScheduler(){

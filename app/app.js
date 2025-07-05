@@ -56,6 +56,10 @@ setupRedisAdapter().catch(err => {
 
 app.set('io', io);
 
+// Start the GameEngine attack scheduler
+const GameEngine = require('./services/GameEngine');
+GameEngine.startAttackScheduler(io);
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
