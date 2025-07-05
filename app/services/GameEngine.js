@@ -68,27 +68,23 @@ class GameEngine {
     }
 
     async applyDamageToTargets(totalAttackPower, targets) {
-        this.log(`توزیع قدرت حمله ${totalAttackPower} بین ${targets.length} دیوار هدف.`);
-        if (!targets.length) return;
+        this.log(`اعمال قدرت حمله ${totalAttackPower} به هر یک از ${targets.length} دیوار هدف خارجی.`);
+        if (!targets.length) {
+            this.log("هیچ دیوار خارجی برای اعمال آسیب یافت نشد.");
+            return;
+        }
 
-        // Simple even distribution for now. Could be weighted by wall health, etc.
-        const powerPerTarget = Math.floor(totalAttackPower / targets.length);
-        let remainingPowerOverall = totalAttackPower;
-
+        // دیگر قدرت حمله تقسیم نمی‌شود. هر دیوار خارجی کل قدرت حمله را دریافت می‌کند.
+        // متغیر remainingPowerOverall نیز دیگر لازم نیست چون قدرت کلی برای هر دیوار مستقل است.
 
         for (const { wall, tile: ownerTile } of targets) {
-            if(remainingPowerOverall <= 0) {
-                this.log("قدرت حمله کلی به اتمام رسید.");
-                break;
-            }
-            let powerForThisWall = Math.min(powerPerTarget > 0 ? powerPerTarget : 1, remainingPowerOverall); // Ensure at least 1 if possible
-             if (targets.indexOf({wall, tile: ownerTile}) === targets.length -1 ){ // last target gets remainder
-                powerForThisWall = remainingPowerOverall;
-            }
+            // اگر دیوار یا کاشی مالک آن به دلایلی در این فاصله از بین رفته باشد (بسیار بعید در یک اجرای تک نخی)
+            // می‌توان یک بررسی اضافی در اینجا انجام داد، اما فعلاً فرض بر صحت داده‌های ورودی است.
 
+            const attackPowerForThisSpecificWall = totalAttackPower; // هر دیوار کل قدرت حمله را دریافت می‌کند.
 
-            this.log(`پردازش دیوار ID ${wall.id} متعلق به گروه ${ownerTile.ownerGroup.name} در (${ownerTile.x},${ownerTile.y}) با قدرت حمله تخصیص یافته: ${powerForThisWall}`);
-            let remainingAttackPowerOnWall = powerForThisWall;
+            this.log(`پردازش دیوار ID ${wall.id} متعلق به گروه ${ownerTile.ownerGroup.name} در (${ownerTile.x},${ownerTile.y}) با قدرت حمله: ${attackPowerForThisSpecificWall}`);
+            let remainingAttackPowerOnWall = attackPowerForThisSpecificWall;
 
             // Sort ammos by defenseLine DESC on the preloaded ammos
             const sortedAmmos = [...wall.deployedAmmunitions].sort((a, b) => b.ammunitionDetail.defenseLine - a.ammunitionDetail.defenseLine);
