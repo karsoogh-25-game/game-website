@@ -308,32 +308,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     async function openWallManagementModal(tileId) {
-                    showGlobalLoading(true);
-                    try {
-                        await axios.post('/api/game/tile/buy', { tileId, mapId: currentActiveMap.id });
-                    } catch (error) {
-                        console.error("Error buying tile:", error);
-                        sendNotification('error', error.response?.data?.message || 'خطا در خرید ملک.');
-                    } finally {
-                        showGlobalLoading(false);
-                    }
-                });
-            });
-        });
-
-        const wallModalTriggers = document.querySelectorAll('.tile [data-action="open-wall-modal"]');
-        wallModalTriggers.forEach(trigger => {
-            trigger.addEventListener('click', (e) => {
-                const tileElement = e.target.closest('.tile');
-                const tileId = tileElement.dataset.tileId;
-                openWallManagementModal(tileId);
-            });
-        });
-    }
-
-    async function openWallManagementModal(tileId) {
+        // Corrected and restored function body
         showGlobalLoading(true);
         try {
+            // If a tile was selected for buy, deselect it when opening wall modal
+            if (currentlySelectedBuyableTile) {
+                resetBuyableTile(currentlySelectedBuyableTile);
+                currentlySelectedBuyableTile = null;
+            }
+
             const response = await axios.get(`/api/game/map/${currentActiveMap.id}/state`);
             const mapData = response.data;
             const tile = mapData.tiles.find(t => t.id == tileId);
