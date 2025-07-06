@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const currentActiveMap = { id: null, name: '', size: 0, gameLocked: false };
     let userGroupId = null;
+    let currentlySelectedBuyableTile = null; // Track the tile selected for purchase
 
     const showGlobalLoading = (show) => {
         const spinner = document.getElementById('loading-spinner');
@@ -142,25 +143,33 @@ document.addEventListener('DOMContentLoaded', () => {
                      tileContent += `<div class="absolute bottom-0 left-0 text-xs p-0.5 bg-black bg-opacity-50 text-white rounded-tr-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">${tile.ownerGroup.name}</div>`;
                 }
             } else if (!tile.OwnerGroupId && !currentActiveMap.gameLocked) {
-                tileClasses += " buyable-tile"; // Add class for buyable tile styling and event listener
-                tileDataAttributes += ` data-price="${tile.price}"`; // Add price to tile's dataset
-                // Text content for buyable tile, styled by CSS .buyable-tile .text-content or similar
-                tileContent = `<span class="text-xs text-white font-bold pointer-events-none">خرید (${tile.price})</span>`;
-                // displayColor will be handled by .buyable-tile CSS if needed, or use a specific color here
-                // displayColor = '#22C55E'; // Example: Green for buyable, can be overridden by CSS
+                tileClasses += " buyable-tile";
+                tileDataAttributes += ` data-price="${tile.price}"`;
+                tileContent = ''; // Initially no text, will be added on first click
+                // Initial displayColor for buyable tile will be default (e.g. gray), changed on click by 'ready-to-buy' class
             } else if (!tile.OwnerGroupId && currentActiveMap.gameLocked) {
                 tileContent = `<span class="text-xs text-yellow-400 pointer-events-none">(قفل)</span>`;
             }
 
             html += `<div class="${tileClasses}" ${tileDataAttributes} style="background-color: ${displayColor};">`;
             html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm pointer-events-none">${tile.x},${tile.y}</div>`;
-            html += `<div class="flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`;
+            // The content wrapper div that will hold text like "خرید" or "(نابود شده)"
+            html += `<div class="tile-content-wrapper flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`;
             html += `</div>`;
         });
 
         html += `</div></div>`;
         contentDiv.innerHTML = html;
         attachEventListeners();
+    }
+
+    function resetBuyableTile(tileElement) {
+        if (!tileElement) return;
+        tileElement.classList.remove('ready-to-buy');
+        const contentWrapper = tileElement.querySelector('.tile-content-wrapper');
+        if (contentWrapper) contentWrapper.innerHTML = ''; // Clear "خرید (قیمت)" text
+        // Potentially reset background color if not handled by CSS removing 'ready-to-buy'
+        // tileElement.style.backgroundColor = '#4a5568'; // Default unowned color, if needed
     }
 
     // Updated tile-destroyed event listener
@@ -215,20 +224,90 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function attachEventListeners() {
-        // Changed selector to target the tile itself if it's buyable
+        // Reset currently selected tile when clicking outside
+        document.addEventListener('click', function(event) {
+            if (currentlySelectedBuyableTile) {
+                const tileElement = currentlySelectedBuyableTile;
+                // Check if the click is outside the currently selected tile
+                if (!tileElement.contains(event.target)) {
+                    resetBuyableTile(tileElement);
+                    currentlySelectedBuyableTile = null;
+                }
+            }
+        }, true); // Use capture phase to ensure it runs before other click listeners if needed
+
+
         const buyableTiles = document.querySelectorAll('.tile.buyable-tile');
         buyableTiles.forEach(tileElement => {
-            tileElement.addEventListener('click', (e) => { // Listen on the tile div
-                if (currentActiveMap.gameLocked) {
-                    sendNotification('error', 'بازی قفل شده است، امکان خرید وجود ندارد.');
+            tileElement.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent document click listener from immediately resetting this tile
+
+                if (currentActiveMap.gameLocked || tileElement.classList.contains('tile-destroyed')) {
+                    sendNotification('error', 'امکان انتخاب این ملک وجود ندارد (قفل یا نابود شده).');
+                    if(currentlySelectedBuyableTile){
+                        resetBuyableTile(currentlySelectedBuyableTile);
+                        currentlySelectedBuyableTile = null;
+                    }
                     return;
                 }
-                // const tileElement = e.target.closest('.tile'); // e.target is the tile div itself
-                const tileId = tileElement.dataset.tileId;
-                const price = parseInt(tileElement.dataset.price); // Get price from tile's dataset
 
-                sendConfirmationNotification('confirm', `آیا از خرید این ملک به قیمت ${price} امتیاز مطمئن هستید؟`, async (confirmed) => {
-                    if (!confirmed) return;
+                const tileId = tileElement.dataset.tileId;
+                const price = parseInt(tileElement.dataset.price);
+                const contentWrapper = tileElement.querySelector('.tile-content-wrapper');
+
+                if (currentlySelectedBuyableTile === tileElement) { // Second click on the same tile
+                    sendConfirmationNotification('confirm', `آیا از خرید این ملک به قیمت ${price} امتیاز مطمئن هستید؟`, async (confirmed) => {
+                        if (confirmed) {
+                            showGlobalLoading(true);
+                            try {
+                                await axios.post('/api/game/tile/buy', { tileId, mapId: currentActiveMap.id });
+                                // Map will be re-rendered via socket 'map-updated' event
+                                // Reset selection after attempting purchase
+                                resetBuyableTile(tileElement);
+                                currentlySelectedBuyableTile = null;
+                            } catch (error) {
+                                console.error("Error buying tile:", error);
+                                sendNotification('error', error.response?.data?.message || 'خطا در خرید ملک.');
+                                // Keep it selected on error to allow retry or deselection
+                            } finally {
+                                showGlobalLoading(false);
+                            }
+                        } else {
+                             // If user cancels confirmation, keep it selected for now, or deselect:
+                            // resetBuyableTile(tileElement);
+                            // currentlySelectedBuyableTile = null;
+                        }
+                    });
+                } else { // First click or click on a different buyable tile
+                    if (currentlySelectedBuyableTile) {
+                        resetBuyableTile(currentlySelectedBuyableTile); // Reset previously selected tile
+                    }
+                    currentlySelectedBuyableTile = tileElement;
+                    tileElement.classList.add('ready-to-buy');
+                    if (contentWrapper) {
+                        contentWrapper.innerHTML = `<span class="text-xs text-white font-bold pointer-events-none">خرید (${price})</span>`;
+                    }
+                }
+            });
+        });
+
+        const wallModalTriggers = document.querySelectorAll('.tile [data-action="open-wall-modal"]');
+        wallModalTriggers.forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                // If a tile was selected for buy, deselect it when opening wall modal
+                if (currentlySelectedBuyableTile) {
+                    resetBuyableTile(currentlySelectedBuyableTile);
+                    currentlySelectedBuyableTile = null;
+                }
+                const tileElement = e.target.closest('.tile');
+                const tileId = tileElement.dataset.tileId;
+                openWallManagementModal(tileId);
+            });
+        });
+    }
+
+
+    async function openWallManagementModal(tileId) {
                     showGlobalLoading(true);
                     try {
                         await axios.post('/api/game/tile/buy', { tileId, mapId: currentActiveMap.id });
