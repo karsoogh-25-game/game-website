@@ -1,3 +1,5 @@
+import Panzoom from '@panzoom/panzoom'; // Import Panzoom library
+
 // Territory Defense Game Logic
 document.addEventListener('DOMContentLoaded', () => {
     const territorySection = document.getElementById('territory_defense');
@@ -7,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentActiveMap = { id: null, name: '', size: 0, gameLocked: false };
     let userGroupId = null;
     let currentlySelectedBuyableTile = null; // Track the tile selected for purchase
+    let panzoomInstance = null; // To hold the Panzoom instance
 
     const showGlobalLoading = (show) => {
         const spinner = document.getElementById('loading-spinner');
@@ -163,7 +166,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
         html += `</div></div>`;
         contentDiv.innerHTML = html;
-        attachEventListeners();
+
+        const gameGridElement = document.getElementById('game-grid');
+        const scrollContainer = document.querySelector('.scrollable-map-container');
+
+        if (gameGridElement && scrollContainer) {
+            if (panzoomInstance) {
+                panzoomInstance.destroy();
+            }
+
+            // Calculate initial scale to fit the map within the container
+            const containerWidth = scrollContainer.clientWidth - 40; // 20px padding on each side
+            const containerHeight = scrollContainer.clientHeight - 40; // 20px padding on each side
+            const mapPixelWidth = mapData.size * 60; // Assuming 60px per tile as per style
+            const mapPixelHeight = mapData.size * 60;
+
+            let startScale = 1;
+            if (mapPixelWidth > 0 && mapPixelHeight > 0) { // Ensure map dimensions are valid
+                 startScale = Math.min(containerWidth / mapPixelWidth, containerHeight / mapPixelHeight, 1);
+            }
+
+            panzoomInstance = Panzoom(gameGridElement, {
+                maxScale: 3,
+                minScale: 0.3, // Adjust as needed
+                startScale: startScale,
+                contain: 'outside', // Or 'inside', depending on desired behavior
+                canvas: true, // Apply transformations directly to the 'game-grid' element
+                // Panzoom handles most click vs. drag differentiation automatically.
+                // For more control over what starts a pan/zoom:
+                // filterKey: () => true, // Always enable, then use exclude/disablePan/disableZoom
+                // excludeClass: 'panzoom-exclude' // Add this class to elements you don't want to trigger pan/zoom
+                // We might need to ensure clicks on tiles still work.
+                // Panzoom usually handles this well, but if clicks are eaten:
+                onClick: (e) => {
+                    // This is a Panzoom onClick, not a regular DOM click.
+                    // It fires after a "tap" or "click" that doesn't start a pan.
+                    // We let our own DOM click listeners on tiles handle the actions.
+                    // console.log('Panzoom onClick', e);
+                },
+                // To prevent Panzoom from interfering with clicks on interactive elements (like our tiles for buying/modals)
+                // we can check the target in handleStartEvent.
+                // However, Panzoom is generally good about not capturing clicks on interactive elements like buttons.
+                // Since our tiles are divs, we might need to be more careful if default behavior isn't enough.
+            });
+            // Initial positioning if needed, though Panzoom tries to center.
+            // panzoomInstance.pan( (scrollContainer.clientWidth - mapPixelWidth * startScale) / 2, (scrollContainer.clientHeight - mapPixelHeight * startScale) / 2);
+            gameGridElement.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+
+        } else {
+            console.error("Game grid or scroll container not found for Panzoom initialization.");
+        }
+
+        attachEventListeners(); // Attach listeners after Panzoom is set up
     }
 
     function resetBuyableTile(tileElement) {
