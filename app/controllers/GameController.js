@@ -61,6 +61,10 @@ exports.buyTile = async (req, res) => {
             await transaction.rollback();
             return res.status(404).json({ message: "ملک مورد نظر در این نقشه یافت نشد." });
         }
+        if (tile.isDestroyed) { // بررسی جدید برای کاشی نابود شده
+            await transaction.rollback();
+            return res.status(400).json({ message: "این کاشی نابود شده و قابل خرید نیست." });
+        }
         if (tile.OwnerGroupId) {
             await transaction.rollback();
             return res.status(400).json({ message: "این ملک قبلاً خریداری شده است." });

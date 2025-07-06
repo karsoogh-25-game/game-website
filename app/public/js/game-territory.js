@@ -115,38 +115,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
         mapData.tiles.forEach(tile => {
             const ownerColor = tile.ownerGroup ? tile.ownerGroup.color : 'transparent';
-            const displayColor = tile.ownerGroup ? ownerColor : '#4a5568';
+            let displayColor = tile.ownerGroup ? ownerColor : '#4a5568'; // Default for unowned
             const isOwner = tile.OwnerGroupId && tile.OwnerGroupId === userGroupId;
+            let tileClasses = "tile aspect-square flex flex-col items-center justify-center relative group";
 
-            html += `<div class="tile aspect-square flex flex-col items-center justify-center relative group"
+            if (tile.isDestroyed) { // بررسی کاشی نابود شده
+                tileClasses += " tile-destroyed"; // افزودن کلاس برای استایل‌دهی
+                displayColor = "transparent"; // یا هر رنگ دیگری برای نابود شده
+            }
+
+            html += `<div class="${tileClasses}"
                          data-tile-id="${tile.id}" data-x="${tile.x}" data-y="${tile.y}"
                          style="background-color: ${displayColor};">`;
 
             html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm">${tile.x},${tile.y}</div>`;
-            if (tile.ownerGroup) {
-                html += `<div class="absolute bottom-0 left-0 text-xs p-0.5 bg-black bg-opacity-50 text-white rounded-tr-sm opacity-0 group-hover:opacity-100 transition-opacity">${tile.ownerGroup.name}</div>`;
-            }
 
-            if (tile.OwnerGroupId && tile.walls && tile.walls.length > 0) {
-                let totalDefense = 0;
-                tile.walls.forEach(wall => {
-                    totalDefense += wall.health;
-                    wall.deployedAmmunitions.forEach(ammo => {
-                        totalDefense += ammo.health;
-                    });
-                });
-
-                html += `<div class="wall-representation absolute inset-0 border-2 border-opacity-75 pointer-events-none"
-                              style="border-color: ${isOwner ? 'cyan' : 'orange'};">
-                              <span class="absolute text-xs text-white bg-black bg-opacity-50 px-1 rounded" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">${totalDefense}</span>
-                          </div>`;
-
-                if(isOwner && tile.walls.length === 4){
-                     html += `<div class="absolute inset-0 cursor-pointer" data-action="open-wall-modal"></div>`;
+            if (!tile.isDestroyed) { // فقط اگر نابود نشده، بقیه اطلاعات را نمایش بده
+                if (tile.ownerGroup) {
+                    html += `<div class="absolute bottom-0 left-0 text-xs p-0.5 bg-black bg-opacity-50 text-white rounded-tr-sm opacity-0 group-hover:opacity-100 transition-opacity">${tile.ownerGroup.name}</div>`;
                 }
 
-            } else if (!tile.OwnerGroupId && !currentActiveMap.gameLocked) {
-                html += `<button class="buy-tile-btn text-xs bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded" data-price="${tile.price}">خرید (${tile.price})</button>`;
+                if (tile.OwnerGroupId && tile.walls && tile.walls.length > 0) {
+                    let totalDefense = 0;
+                    tile.walls.forEach(wall => {
+                        totalDefense += wall.health;
+                        wall.deployedAmmunitions.forEach(ammo => {
+                            totalDefense += ammo.health;
+                        });
+                    });
+
+                    html += `<div class="wall-representation absolute inset-0 border-2 border-opacity-75 pointer-events-none"
+                                  style="border-color: ${isOwner ? 'cyan' : 'orange'};">
+                                  <span class="absolute text-xs text-white bg-black bg-opacity-50 px-1 rounded" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">${totalDefense}</span>
+                              </div>`;
+
+                    if(isOwner && tile.walls.length === 4){ // اطمینان از اینکه دیوارها هنوز وجود دارند (هرچند isDestroyed باید این را پوشش دهد)
+                         html += `<div class="absolute inset-0 cursor-pointer" data-action="open-wall-modal"></div>`;
+                    }
+
+                } else if (!tile.OwnerGroupId && !currentActiveMap.gameLocked) {
+                    html += `<button class="buy-tile-btn text-xs bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded" data-price="${tile.price}">خرید (${tile.price})</button>`;
+                }
+            } else {
+                 // Optional: Add a specific visual cue for destroyed tiles, e.g., an icon or text
+                 html += `<span class="text-xs text-gray-500">(نابود شده)</span>`;
             }
             html += `</div>`;
         });
@@ -409,6 +421,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (territorySection && territorySection.classList.contains('active')) {
                 sendNotification('warning', data.message || "تغییرات مهمی از سوی ادمین اعمال شده، صفحه مجدداً بارگذاری می‌شود...");
                 setTimeout(() => window.location.reload(), 2000);
+            }
+        });
+
+        window.socket.on('tile-destroyed', (data) => {
+            if (data.mapId === currentActiveMap.id) {
+                const tileElement = document.querySelector(`.tile[data-tile-id="${data.tileId}"]`);
+                if (tileElement) {
+                    tileElement.classList.add('tile-destroyed');
+                    tileElement.style.backgroundColor = "transparent"; // یا هر رنگ دیگری برای نابود شده
+                    // پاک کردن محتوای داخلی کاشی، به جز مختصات اگر هنوز نمایش داده می‌شود
+                    const coordElement = tileElement.querySelector('.absolute.top-0.right-0');
+                    tileElement.innerHTML = ''; // پاک کردن همه چیز
+                    if (coordElement) tileElement.appendChild(coordElement); // اضافه کردن مجدد مختصات
+                    tileElement.insertAdjacentHTML('beforeend', '<span class="text-xs text-gray-500">(نابود شده)</span>');
+
+                    // حذف event listener ها اگر لازم باشد (اگرچه با پاک کردن innerHTML معمولا حذف می‌شوند)
+                    // یا غیرفعال کردن امکان کلیک
+                    const buyButton = tileElement.querySelector('.buy-tile-btn');
+                    if (buyButton) buyButton.remove();
+                    const wallModalTrigger = tileElement.querySelector('[data-action="open-wall-modal"]');
+                    if (wallModalTrigger) wallModalTrigger.remove();
+
+                    sendNotification('error', `کاشی در (${data.x}, ${data.y}) نابود شد.`);
+                }
             }
         });
     }

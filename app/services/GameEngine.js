@@ -99,20 +99,38 @@ class GameEngine {
 
             const attackPowerForThisSpecificWall = totalAttackPower; // هر دیوار کل قدرت حمله را دریافت می‌کند.
 
-            this.log(`پردازش دیوار ID ${wall.id} متعلق به گروه ${ownerTile.ownerGroup.name} در (${ownerTile.x},${ownerTile.y}) با قدرت حمله: ${attackPowerForThisSpecificWall}`);
+            this.log(`[DMG_TRACE] شروع پردازش دیوار ID ${wall.id} (کاشی ${ownerTile.x},${ownerTile.y}). قدرت حمله موج: ${totalAttackPower}. سلامت اولیه دیوار: ${wall.health}.`);
+
             let remainingAttackPowerOnWall = attackPowerForThisSpecificWall;
+
+            // Log مهمات قبل از آسیب
+            if (wall.deployedAmmunitions && wall.deployedAmmunitions.length > 0) {
+                this.log(`[DMG_TRACE] دیوار ID ${wall.id} دارای ${wall.deployedAmmunitions.length} مهمات است.`);
+                for(const ammo of wall.deployedAmmunitions) {
+                    this.log(`[DMG_TRACE]   مهمات ID ${ammo.id} (${ammo.ammunitionDetail.name}) - سلامت اولیه: ${ammo.health}, خط دفاعی: ${ammo.ammunitionDetail.defenseLine}`);
+                }
+            } else {
+                this.log(`[DMG_TRACE] دیوار ID ${wall.id} مهمات ندارد.`);
+            }
 
             // Sort ammos by defenseLine DESC on the preloaded ammos
             const sortedAmmos = [...wall.deployedAmmunitions].sort((a, b) => b.ammunitionDetail.defenseLine - a.ammunitionDetail.defenseLine);
 
             for (const ammo of sortedAmmos) {
-                if (remainingAttackPowerOnWall <= 0) break;
-                if (ammo.health <= 0) continue;
+                if (remainingAttackPowerOnWall <= 0) {
+                    this.log(`[DMG_TRACE] قدرت حمله برای دیوار ID ${wall.id} تمام شد (قبل از مهمات ID ${ammo.id}).`);
+                    break;
+                }
+                if (ammo.health <= 0) {
+                    this.log(`[DMG_TRACE] مهمات ID ${ammo.id} روی دیوار ${wall.id} از قبل نابود شده بود.`);
+                    continue;
+                }
 
                 const damageToAmmo = Math.min(remainingAttackPowerOnWall, ammo.health);
+                this.log(`[DMG_TRACE] دیوار ID ${wall.id}, مهمات ID ${ammo.id}: قدرت حمله باقیمانده ${remainingAttackPowerOnWall}, سلامت مهمات ${ammo.health}. آسیب محاسبه شده به مهمات: ${damageToAmmo}.`);
                 ammo.health -= damageToAmmo;
                 remainingAttackPowerOnWall -= damageToAmmo;
-                this.log(`مهمات ID ${ammo.id} (${ammo.ammunitionDetail.name}) روی دیوار ID ${wall.id} آسیب دید: ${damageToAmmo}. سلامت باقیمانده مهمات: ${ammo.health}`);
+                this.log(`[DMG_TRACE] مهمات ID ${ammo.id} (${ammo.ammunitionDetail.name}) روی دیوار ID ${wall.id} آسیب دید: ${damageToAmmo}. سلامت نهایی مهمات: ${ammo.health}. قدرت حمله باقیمانده برای دیوار: ${remainingAttackPowerOnWall}`);
 
                 await ammo.save();
             }
@@ -121,12 +139,13 @@ class GameEngine {
 
             if (remainingAttackPowerOnWall > 0 && wall.health > 0) {
                 const damageToWall = Math.min(remainingAttackPowerOnWall, wall.health);
+                this.log(`[DMG_TRACE] دیوار ID ${wall.id}: قدرت حمله باقیمانده ${remainingAttackPowerOnWall}, سلامت دیوار ${wall.health}. آسیب محاسبه شده به دیوار: ${damageToWall}.`);
                 wall.health -= damageToWall;
-                this.log(`دیوار ID ${wall.id} آسیب دید: ${damageToWall}. سلامت باقیمانده دیوار: ${wall.health}`);
+                this.log(`[DMG_TRACE] دیوار ID ${wall.id} آسیب دید: ${damageToWall}. سلامت نهایی دیوار: ${wall.health}.`);
                 await wall.save();
 
                 if (wall.health <= 0) {
-                    this.log(`دیوار ID ${wall.id} نابود شد. کاشی (${ownerTile.x},${ownerTile.y}) اکنون نابود شده تلقی می‌شود.`);
+                    this.log(`[DMG_TRACE] دیوار ID ${wall.id} نابود شد (سلامت نهایی: ${wall.health}). کاشی (${ownerTile.x},${ownerTile.y}) اکنون نابود شده تلقی می‌شود.`);
                     const previousOwnerId = ownerTile.OwnerGroupId;
 
                     ownerTile.OwnerGroupId = null; // چه مالک داشته چه نداشته، دیگر مالک ندارد
