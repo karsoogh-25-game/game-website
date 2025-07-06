@@ -107,25 +107,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p>در حال حاضر موج حمله فعالی برنامه‌ریزی نشده است.</p>
                      </div>`;
         }
-
+        // Transparent background for the grid container itself
         html += `<div class="overflow-auto scrollable-map-container max-h-[70vh] bg-gray-700 p-2 rounded-lg shadow-inner">
-                    <div id="game-grid" class="grid gap-0.5 bg-gray-900 border border-gray-600"
+                    <div id="game-grid" class="grid gap-0.5 bg-transparent border-transparent"
                          style="grid-template-columns: repeat(${mapData.size}, minmax(60px, 1fr));
                                 width: ${mapData.size * 60}px;">`;
 
         mapData.tiles.forEach(tile => {
             const ownerColor = tile.ownerGroup ? tile.ownerGroup.color : 'transparent';
-            let displayColor = tile.ownerGroup ? ownerColor : '#4a5568'; // Default for unowned
+            let displayColor = tile.ownerGroup ? ownerColor : '#4a5568';
             const isOwner = tile.OwnerGroupId && tile.OwnerGroupId === userGroupId;
-            let tileClasses = "tile aspect-square flex flex-col items-center justify-center relative group"; // base classes
-            let tileContent = ""; // To build content based on state
+            let tileClasses = "tile aspect-square flex flex-col items-center justify-center relative group";
+            let tileContent = "";
+            let tileDataAttributes = `data-tile-id="${tile.id}" data-x="${tile.x}" data-y="${tile.y}"`;
 
             if (tile.isDestroyed) {
-                tileClasses += " tile-destroyed"; // Add class for destroyed style
-                displayColor = "transparent";     // Make background transparent
-                tileContent = `<span class="text-xs text-gray-500">(نابود شده)</span>`;
+                tileClasses += " tile-destroyed";
+                displayColor = "transparent";
+                tileContent = `<span class="text-xs text-gray-500 pointer-events-none">(نابود شده)</span>`; // pointer-events-none for text
             } else if (tile.OwnerGroupId && tile.walls && tile.walls.length > 0) {
-                // Tile is owned and has walls
                 let totalDefense = 0;
                 tile.walls.forEach(wall => {
                     totalDefense += wall.health;
@@ -133,32 +133,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 tileContent += `<div class="wall-representation absolute inset-0 border-2 border-opacity-75 pointer-events-none"
                                      style="border-color: ${isOwner ? 'cyan' : 'orange'};">
-                                     <span class="absolute text-xs text-white bg-black bg-opacity-50 px-1 rounded" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">${totalDefense}</span>
+                                     <span class="absolute text-xs text-white bg-black bg-opacity-50 px-1 rounded pointer-events-none" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">${totalDefense}</span>
                                  </div>`;
-                if (isOwner) { // Assuming walls.length === 4 is implicitly true if owned and has walls
+                if (isOwner) {
                     tileContent += `<div class="absolute inset-0 cursor-pointer" data-action="open-wall-modal"></div>`;
                 }
                 if (tile.ownerGroup) {
-                     tileContent += `<div class="absolute bottom-0 left-0 text-xs p-0.5 bg-black bg-opacity-50 text-white rounded-tr-sm opacity-0 group-hover:opacity-100 transition-opacity">${tile.ownerGroup.name}</div>`;
+                     tileContent += `<div class="absolute bottom-0 left-0 text-xs p-0.5 bg-black bg-opacity-50 text-white rounded-tr-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">${tile.ownerGroup.name}</div>`;
                 }
             } else if (!tile.OwnerGroupId && !currentActiveMap.gameLocked) {
-                // Tile is unowned and game is not locked -> show buy button
-                // To prevent resizing, the button should be positioned absolutely or the tile should handle overflow.
-                // For now, we ensure the button is part of the flex content that centers.
-                tileContent = `<button class="buy-tile-btn text-xs bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded" data-price="${tile.price}">خرید (${tile.price})</button>`;
+                tileClasses += " buyable-tile"; // Add class for buyable tile styling and event listener
+                tileDataAttributes += ` data-price="${tile.price}"`; // Add price to tile's dataset
+                // Text content for buyable tile, styled by CSS .buyable-tile .text-content or similar
+                tileContent = `<span class="text-xs text-white font-bold pointer-events-none">خرید (${tile.price})</span>`;
+                // displayColor will be handled by .buyable-tile CSS if needed, or use a specific color here
+                // displayColor = '#22C55E'; // Example: Green for buyable, can be overridden by CSS
             } else if (!tile.OwnerGroupId && currentActiveMap.gameLocked) {
-                // Tile is unowned but game is locked
-                tileContent = `<span class="text-xs text-yellow-400">(قفل)</span>`;
+                tileContent = `<span class="text-xs text-yellow-400 pointer-events-none">(قفل)</span>`;
             }
-            // Default empty state if none of the above (e.g. unowned and game locked, handled by tileContent ="" or specific message)
 
-            html += `<div class="${tileClasses}"
-                         data-tile-id="${tile.id}" data-x="${tile.x}" data-y="${tile.y}"
-                         style="background-color: ${displayColor};">`; // Removed justify-center from here to let content flow naturally or be positioned.
-
-            // Coordinates always visible
-            html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm">${tile.x},${tile.y}</div>`;
-            html += `<div class="flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`; // Wrapper for content centering
+            html += `<div class="${tileClasses}" ${tileDataAttributes} style="background-color: ${displayColor};">`;
+            html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm pointer-events-none">${tile.x},${tile.y}</div>`;
+            html += `<div class="flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`;
             html += `</div>`;
         });
 
@@ -167,38 +163,33 @@ document.addEventListener('DOMContentLoaded', () => {
         attachEventListeners();
     }
 
-    // Ensure tile-destroyed event listener is robust
+    // Updated tile-destroyed event listener
     function updateTileElementOnDestroyed(tileElement, data) {
-        tileElement.classList.add('tile-destroyed');
+        tileElement.className = "tile aspect-square flex flex-col items-center justify-center relative group tile-destroyed"; // Set classes directly
         tileElement.style.backgroundColor = "transparent";
 
-        // Preserve coordinates, remove everything else
         const coordElement = tileElement.querySelector('.absolute.top-0.right-0');
-        tileElement.innerHTML = ''; // Clear all existing content
+        tileElement.innerHTML = '';
         if (coordElement) tileElement.appendChild(coordElement);
 
         const destroyedText = document.createElement('span');
-        destroyedText.className = 'text-xs text-gray-500';
+        destroyedText.className = 'text-xs text-gray-500 pointer-events-none';
         destroyedText.textContent = '(نابود شده)';
 
-        // New wrapper for centering content inside the tile
         const contentWrapper = document.createElement('div');
         contentWrapper.className = 'flex flex-col items-center justify-center w-full h-full';
         contentWrapper.appendChild(destroyedText);
         tileElement.appendChild(contentWrapper);
 
-        // Remove any buy buttons or wall modal triggers if they were somehow re-added
-        const buyButton = tileElement.querySelector('.buy-tile-btn');
-        if (buyButton) buyButton.remove();
-        const wallModalTrigger = tileElement.querySelector('[data-action="open-wall-modal"]');
-        if (wallModalTrigger) wallModalTrigger.remove();
+        // Remove specific data attributes if they cause issues, though class should handle behavior
+        tileElement.removeAttribute('data-price');
+        // No need to remove listeners if we are wiping innerHTML and not re-adding clickable elements
     }
-
 
     function startCountdown(attackTime) {
         const countdownElement = document.getElementById('attack-countdown');
         if (!countdownElement) return;
-        if (window.countdownIntervalId) clearInterval(window.countdownIntervalId); // Clear existing interval
+        if (window.countdownIntervalId) clearInterval(window.countdownIntervalId);
 
         window.countdownIntervalId = setInterval(() => {
             const now = new Date().getTime();
@@ -224,16 +215,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function attachEventListeners() {
-        const buyButtons = document.querySelectorAll('.buy-tile-btn');
-        buyButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
+        // Changed selector to target the tile itself if it's buyable
+        const buyableTiles = document.querySelectorAll('.tile.buyable-tile');
+        buyableTiles.forEach(tileElement => {
+            tileElement.addEventListener('click', (e) => { // Listen on the tile div
                 if (currentActiveMap.gameLocked) {
                     sendNotification('error', 'بازی قفل شده است، امکان خرید وجود ندارد.');
                     return;
                 }
-                const tileElement = e.target.closest('.tile');
+                // const tileElement = e.target.closest('.tile'); // e.target is the tile div itself
                 const tileId = tileElement.dataset.tileId;
-                const price = parseInt(e.target.dataset.price);
+                const price = parseInt(tileElement.dataset.price); // Get price from tile's dataset
 
                 sendConfirmationNotification('confirm', `آیا از خرید این ملک به قیمت ${price} امتیاز مطمئن هستید؟`, async (confirmed) => {
                     if (!confirmed) return;
