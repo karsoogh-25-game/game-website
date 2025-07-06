@@ -115,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         mapData.tiles.forEach(tile => {
             const ownerColor = tile.ownerGroup ? tile.ownerGroup.color : 'transparent';
-            const ownerColor = tile.ownerGroup ? tile.ownerGroup.color : 'transparent';
             let displayColor = tile.ownerGroup ? ownerColor : '#4a5568'; // Default for unowned
             const isOwner = tile.OwnerGroupId && tile.OwnerGroupId === userGroupId;
             let tileClasses = "tile aspect-square flex flex-col items-center justify-center relative group"; // base classes
