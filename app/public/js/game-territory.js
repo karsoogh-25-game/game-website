@@ -115,51 +115,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
         mapData.tiles.forEach(tile => {
             const ownerColor = tile.ownerGroup ? tile.ownerGroup.color : 'transparent';
+            const ownerColor = tile.ownerGroup ? tile.ownerGroup.color : 'transparent';
             let displayColor = tile.ownerGroup ? ownerColor : '#4a5568'; // Default for unowned
             const isOwner = tile.OwnerGroupId && tile.OwnerGroupId === userGroupId;
-            let tileClasses = "tile aspect-square flex flex-col items-center justify-center relative group";
+            let tileClasses = "tile aspect-square flex flex-col items-center justify-center relative group"; // base classes
+            let tileContent = ""; // To build content based on state
 
-            if (tile.isDestroyed) { // بررسی کاشی نابود شده
-                tileClasses += " tile-destroyed"; // افزودن کلاس برای استایل‌دهی
-                displayColor = "transparent"; // یا هر رنگ دیگری برای نابود شده
+            if (tile.isDestroyed) {
+                tileClasses += " tile-destroyed"; // Add class for destroyed style
+                displayColor = "transparent";     // Make background transparent
+                tileContent = `<span class="text-xs text-gray-500">(نابود شده)</span>`;
+            } else if (tile.OwnerGroupId && tile.walls && tile.walls.length > 0) {
+                // Tile is owned and has walls
+                let totalDefense = 0;
+                tile.walls.forEach(wall => {
+                    totalDefense += wall.health;
+                    wall.deployedAmmunitions.forEach(ammo => totalDefense += ammo.health);
+                });
+                tileContent += `<div class="wall-representation absolute inset-0 border-2 border-opacity-75 pointer-events-none"
+                                     style="border-color: ${isOwner ? 'cyan' : 'orange'};">
+                                     <span class="absolute text-xs text-white bg-black bg-opacity-50 px-1 rounded" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">${totalDefense}</span>
+                                 </div>`;
+                if (isOwner) { // Assuming walls.length === 4 is implicitly true if owned and has walls
+                    tileContent += `<div class="absolute inset-0 cursor-pointer" data-action="open-wall-modal"></div>`;
+                }
+                if (tile.ownerGroup) {
+                     tileContent += `<div class="absolute bottom-0 left-0 text-xs p-0.5 bg-black bg-opacity-50 text-white rounded-tr-sm opacity-0 group-hover:opacity-100 transition-opacity">${tile.ownerGroup.name}</div>`;
+                }
+            } else if (!tile.OwnerGroupId && !currentActiveMap.gameLocked) {
+                // Tile is unowned and game is not locked -> show buy button
+                // To prevent resizing, the button should be positioned absolutely or the tile should handle overflow.
+                // For now, we ensure the button is part of the flex content that centers.
+                tileContent = `<button class="buy-tile-btn text-xs bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded" data-price="${tile.price}">خرید (${tile.price})</button>`;
+            } else if (!tile.OwnerGroupId && currentActiveMap.gameLocked) {
+                // Tile is unowned but game is locked
+                tileContent = `<span class="text-xs text-yellow-400">(قفل)</span>`;
             }
+            // Default empty state if none of the above (e.g. unowned and game locked, handled by tileContent ="" or specific message)
 
             html += `<div class="${tileClasses}"
                          data-tile-id="${tile.id}" data-x="${tile.x}" data-y="${tile.y}"
-                         style="background-color: ${displayColor};">`;
+                         style="background-color: ${displayColor};">`; // Removed justify-center from here to let content flow naturally or be positioned.
 
+            // Coordinates always visible
             html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm">${tile.x},${tile.y}</div>`;
-
-            if (!tile.isDestroyed) { // فقط اگر نابود نشده، بقیه اطلاعات را نمایش بده
-                if (tile.ownerGroup) {
-                    html += `<div class="absolute bottom-0 left-0 text-xs p-0.5 bg-black bg-opacity-50 text-white rounded-tr-sm opacity-0 group-hover:opacity-100 transition-opacity">${tile.ownerGroup.name}</div>`;
-                }
-
-                if (tile.OwnerGroupId && tile.walls && tile.walls.length > 0) {
-                    let totalDefense = 0;
-                    tile.walls.forEach(wall => {
-                        totalDefense += wall.health;
-                        wall.deployedAmmunitions.forEach(ammo => {
-                            totalDefense += ammo.health;
-                        });
-                    });
-
-                    html += `<div class="wall-representation absolute inset-0 border-2 border-opacity-75 pointer-events-none"
-                                  style="border-color: ${isOwner ? 'cyan' : 'orange'};">
-                                  <span class="absolute text-xs text-white bg-black bg-opacity-50 px-1 rounded" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">${totalDefense}</span>
-                              </div>`;
-
-                    if(isOwner && tile.walls.length === 4){ // اطمینان از اینکه دیوارها هنوز وجود دارند (هرچند isDestroyed باید این را پوشش دهد)
-                         html += `<div class="absolute inset-0 cursor-pointer" data-action="open-wall-modal"></div>`;
-                    }
-
-                } else if (!tile.OwnerGroupId && !currentActiveMap.gameLocked) {
-                    html += `<button class="buy-tile-btn text-xs bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded" data-price="${tile.price}">خرید (${tile.price})</button>`;
-                }
-            } else {
-                 // Optional: Add a specific visual cue for destroyed tiles, e.g., an icon or text
-                 html += `<span class="text-xs text-gray-500">(نابود شده)</span>`;
-            }
+            html += `<div class="flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`; // Wrapper for content centering
             html += `</div>`;
         });
 
@@ -167,6 +167,34 @@ document.addEventListener('DOMContentLoaded', () => {
         contentDiv.innerHTML = html;
         attachEventListeners();
     }
+
+    // Ensure tile-destroyed event listener is robust
+    function updateTileElementOnDestroyed(tileElement, data) {
+        tileElement.classList.add('tile-destroyed');
+        tileElement.style.backgroundColor = "transparent";
+
+        // Preserve coordinates, remove everything else
+        const coordElement = tileElement.querySelector('.absolute.top-0.right-0');
+        tileElement.innerHTML = ''; // Clear all existing content
+        if (coordElement) tileElement.appendChild(coordElement);
+
+        const destroyedText = document.createElement('span');
+        destroyedText.className = 'text-xs text-gray-500';
+        destroyedText.textContent = '(نابود شده)';
+
+        // New wrapper for centering content inside the tile
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'flex flex-col items-center justify-center w-full h-full';
+        contentWrapper.appendChild(destroyedText);
+        tileElement.appendChild(contentWrapper);
+
+        // Remove any buy buttons or wall modal triggers if they were somehow re-added
+        const buyButton = tileElement.querySelector('.buy-tile-btn');
+        if (buyButton) buyButton.remove();
+        const wallModalTrigger = tileElement.querySelector('[data-action="open-wall-modal"]');
+        if (wallModalTrigger) wallModalTrigger.remove();
+    }
+
 
     function startCountdown(attackTime) {
         const countdownElement = document.getElementById('attack-countdown');

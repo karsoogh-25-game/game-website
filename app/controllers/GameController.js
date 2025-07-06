@@ -308,7 +308,7 @@ exports.getFullMapState = async (mapId) => {
             {
                 model: Tile,
                 as: 'tiles',
-                attributes: ['id', 'x', 'y', 'price', 'OwnerGroupId', 'MapId'],
+                attributes: ['id', 'x', 'y', 'price', 'OwnerGroupId', 'MapId', 'isDestroyed'], // فیلد isDestroyed اضافه شد
                 include: [
                     { model: Group, as: 'ownerGroup', attributes: ['id', 'name', 'color'] },
                     {
