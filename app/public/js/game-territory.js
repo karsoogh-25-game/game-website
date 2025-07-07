@@ -1,5 +1,3 @@
-import Panzoom from '@panzoom/panzoom'; // Import Panzoom library
-
 // Territory Defense Game Logic
 document.addEventListener('DOMContentLoaded', () => {
     const territorySection = document.getElementById('territory_defense');
@@ -9,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentActiveMap = { id: null, name: '', size: 0, gameLocked: false };
     let userGroupId = null;
     let currentlySelectedBuyableTile = null; // Track the tile selected for purchase
-    let panzoomInstance = null; // To hold the Panzoom instance
 
     const showGlobalLoading = (show) => {
         const spinner = document.getElementById('loading-spinner');
@@ -155,66 +152,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             html += `<div class="${tileClasses}" ${tileDataAttributes} style="background-color: ${displayColor};">`;
-            html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm pointer-events-none">${tile.x},${tile.y}</div>`;
-            // The content wrapper div that will hold text like "خرید" or "(نابود شده)"
-            html += `<div class="tile-content-wrapper flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`;
+            // Only add coordinates and content if the tile is NOT destroyed
+            if (!tile.isDestroyed) {
+                html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm pointer-events-none">${tile.x},${tile.y}</div>`;
+                html += `<div class="tile-content-wrapper flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`;
+            }
+            // If tile.isDestroyed, the div will be empty, styled only by .tile-destroyed class (transparent, border)
             html += `</div>`;
         });
 
         html += `</div></div>`;
         contentDiv.innerHTML = html;
-
-        const gameGridElement = document.getElementById('game-grid');
-        const scrollContainer = document.querySelector('.scrollable-map-container');
-
-        if (gameGridElement && scrollContainer) {
-            if (panzoomInstance) {
-                panzoomInstance.destroy();
-            }
-
-            // Calculate initial scale to fit the map within the container
-            const containerWidth = scrollContainer.clientWidth - 40; // 20px padding on each side
-            const containerHeight = scrollContainer.clientHeight - 40; // 20px padding on each side
-            const mapPixelWidth = mapData.size * 60; // Assuming 60px per tile as per style
-            const mapPixelHeight = mapData.size * 60;
-
-            let startScale = 1;
-            if (mapPixelWidth > 0 && mapPixelHeight > 0) { // Ensure map dimensions are valid
-                 startScale = Math.min(containerWidth / mapPixelWidth, containerHeight / mapPixelHeight, 1);
-            }
-
-            panzoomInstance = Panzoom(gameGridElement, {
-                maxScale: 3,
-                minScale: 0.3, // Adjust as needed
-                startScale: startScale,
-                contain: 'outside', // Or 'inside', depending on desired behavior
-                canvas: true, // Apply transformations directly to the 'game-grid' element
-                // Panzoom handles most click vs. drag differentiation automatically.
-                // For more control over what starts a pan/zoom:
-                // filterKey: () => true, // Always enable, then use exclude/disablePan/disableZoom
-                // excludeClass: 'panzoom-exclude' // Add this class to elements you don't want to trigger pan/zoom
-                // We might need to ensure clicks on tiles still work.
-                // Panzoom usually handles this well, but if clicks are eaten:
-                onClick: (e) => {
-                    // This is a Panzoom onClick, not a regular DOM click.
-                    // It fires after a "tap" or "click" that doesn't start a pan.
-                    // We let our own DOM click listeners on tiles handle the actions.
-                    // console.log('Panzoom onClick', e);
-                },
-                // To prevent Panzoom from interfering with clicks on interactive elements (like our tiles for buying/modals)
-                // we can check the target in handleStartEvent.
-                // However, Panzoom is generally good about not capturing clicks on interactive elements like buttons.
-                // Since our tiles are divs, we might need to be more careful if default behavior isn't enough.
-            });
-            // Initial positioning if needed, though Panzoom tries to center.
-            // panzoomInstance.pan( (scrollContainer.clientWidth - mapPixelWidth * startScale) / 2, (scrollContainer.clientHeight - mapPixelHeight * startScale) / 2);
-            gameGridElement.parentElement.addEventListener('wheel', panzoomInstance.zoomWithWheel);
-
-        } else {
-            console.error("Game grid or scroll container not found for Panzoom initialization.");
-        }
-
-        attachEventListeners(); // Attach listeners after Panzoom is set up
+        attachEventListeners(); // Attach listeners
     }
 
     function resetBuyableTile(tileElement) {
@@ -222,31 +171,16 @@ document.addEventListener('DOMContentLoaded', () => {
         tileElement.classList.remove('ready-to-buy');
         const contentWrapper = tileElement.querySelector('.tile-content-wrapper');
         if (contentWrapper) contentWrapper.innerHTML = ''; // Clear "خرید (قیمت)" text
-        // Potentially reset background color if not handled by CSS removing 'ready-to-buy'
-        // tileElement.style.backgroundColor = '#4a5568'; // Default unowned color, if needed
     }
 
     // Updated tile-destroyed event listener
     function updateTileElementOnDestroyed(tileElement, data) {
         tileElement.className = "tile aspect-square flex flex-col items-center justify-center relative group tile-destroyed"; // Set classes directly
-        tileElement.style.backgroundColor = "transparent";
+        tileElement.style.backgroundColor = "transparent"; // Should be handled by CSS .tile-destroyed
+        tileElement.innerHTML = ''; // Clear ALL content, including coordinates
 
-        const coordElement = tileElement.querySelector('.absolute.top-0.right-0');
-        tileElement.innerHTML = '';
-        if (coordElement) tileElement.appendChild(coordElement);
-
-        const destroyedText = document.createElement('span');
-        destroyedText.className = 'text-xs text-gray-500 pointer-events-none';
-        destroyedText.textContent = '(نابود شده)';
-
-        const contentWrapper = document.createElement('div');
-        contentWrapper.className = 'flex flex-col items-center justify-center w-full h-full';
-        contentWrapper.appendChild(destroyedText);
-        tileElement.appendChild(contentWrapper);
-
-        // Remove specific data attributes if they cause issues, though class should handle behavior
+        // Remove specific data attributes if they cause issues
         tileElement.removeAttribute('data-price');
-        // No need to remove listeners if we are wiping innerHTML and not re-adding clickable elements
     }
 
     function startCountdown(attackTime) {
