@@ -155,12 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             html += `<div class="${tileClasses}" ${tileDataAttributes} style="background-color: ${displayColor};">`;
-            // Only add coordinates and content if the tile is NOT destroyed
-            if (!tile.isDestroyed) {
-                html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm pointer-events-none">${tile.x},${tile.y}</div>`;
-                html += `<div class="tile-content-wrapper flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`;
-            }
-            // If tile.isDestroyed, the div will be empty, styled only by .tile-destroyed class (transparent, border)
+            html += `<div class="absolute top-0 right-0 text-xs p-0.5 bg-black bg-opacity-30 text-white rounded-bl-sm pointer-events-none">${tile.x},${tile.y}</div>`;
+            // The content wrapper div that will hold text like "خرید" or "(نابود شده)"
+            html += `<div class="tile-content-wrapper flex flex-col items-center justify-center w-full h-full">${tileContent}</div>`;
             html += `</div>`;
         });
 
@@ -225,16 +222,31 @@ document.addEventListener('DOMContentLoaded', () => {
         tileElement.classList.remove('ready-to-buy');
         const contentWrapper = tileElement.querySelector('.tile-content-wrapper');
         if (contentWrapper) contentWrapper.innerHTML = ''; // Clear "خرید (قیمت)" text
+        // Potentially reset background color if not handled by CSS removing 'ready-to-buy'
+        // tileElement.style.backgroundColor = '#4a5568'; // Default unowned color, if needed
     }
 
     // Updated tile-destroyed event listener
     function updateTileElementOnDestroyed(tileElement, data) {
         tileElement.className = "tile aspect-square flex flex-col items-center justify-center relative group tile-destroyed"; // Set classes directly
-        tileElement.style.backgroundColor = "transparent"; // Should be handled by CSS .tile-destroyed
-        tileElement.innerHTML = ''; // Clear ALL content, including coordinates
+        tileElement.style.backgroundColor = "transparent";
 
-        // Remove specific data attributes if they cause issues
+        const coordElement = tileElement.querySelector('.absolute.top-0.right-0');
+        tileElement.innerHTML = '';
+        if (coordElement) tileElement.appendChild(coordElement);
+
+        const destroyedText = document.createElement('span');
+        destroyedText.className = 'text-xs text-gray-500 pointer-events-none';
+        destroyedText.textContent = '(نابود شده)';
+
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'flex flex-col items-center justify-center w-full h-full';
+        contentWrapper.appendChild(destroyedText);
+        tileElement.appendChild(contentWrapper);
+
+        // Remove specific data attributes if they cause issues, though class should handle behavior
         tileElement.removeAttribute('data-price');
+        // No need to remove listeners if we are wiping innerHTML and not re-adding clickable elements
     }
 
     function startCountdown(attackTime) {
