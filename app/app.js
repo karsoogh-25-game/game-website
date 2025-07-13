@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const morgan = require('morgan');
 const express = require('express');
 const path = require('path');
 const http = require('http');
@@ -32,6 +33,7 @@ const { Admin, GroupMember, FeatureFlag } = db;
 
 const app = express();
 const server = http.createServer(app);
+app.use(morgan('dev'));
 
 const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'a-default-fallback-secret-for-development',
