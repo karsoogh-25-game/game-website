@@ -1,25 +1,9 @@
 # docker-compose.yml
 
 services:
-  nginx:
-    image: nginx:latest
-    container_name: nginx_container
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - /etc/letsencrypt/live:/etc/letsencrypt/live:ro
-      - /etc/letsencrypt/archive:/etc/letsencrypt/archive:ro
-      - /etc/letsencrypt/renewal:/etc/letsencrypt/renewal:ro
-
-    depends_on:
-      - app
-
-
   # MySQL Database Service
   mysql_db:
-    image: mysql:5.7
+    image: mysql:8.0
     container_name: mysql_db_container
     restart: always
     environment:
@@ -31,7 +15,6 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./mysql/conf.d:/etc/mysql/conf.d
 
   # Redis Service for Socket.IO Adapter
   redis_db:
