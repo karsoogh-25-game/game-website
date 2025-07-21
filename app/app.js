@@ -32,6 +32,16 @@ const sequelize = new Sequelize('ligauk_db', 'ligauk_user', 'ligauk_password', {
 const { Admin, GroupMember, FeatureFlag } = db;
 
 const app = express();
+
+// Add CORS configuration
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Permissions-Policy', 'storage-access=self');
+  next();
+});
 const server = http.createServer(app);
 app.use(morgan('dev'));
 
@@ -48,11 +58,23 @@ const sessionMiddleware = session({
     domain: '.karsooghmehregan.ir' // Include subdomains
   }
 });
+//just for test
+app.get('/api/test-cookie', (req, res) => {
+  res.cookie('testCookie', 'works', {
+    secure: true,
+    sameSite: 'None',
+    httpOnly: false // For testing only
+  });
+  res.json({ success: true });
+});
 
 const io = socketIO(server, {
   cors: {
     origin: true,
     credentials: true
+    methods: ["GET", "POST"],   // Allowed methods
+    allowedHeaders: ["my-custom-header"],
+
   }
 });
 
