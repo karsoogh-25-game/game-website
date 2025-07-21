@@ -61,6 +61,71 @@ app.get('/api/test-cookie', (req, res) => {
   });
   res.json({ success: true });
 });
+// Enhanced cookie test endpoint
+app.get('/api/cookie-test', (req, res) => {
+  // Set multiple test cookies with different configurations
+  const cookiesToSet = {
+    testCookieSecure: {
+      value: 'secure-cookie-value',
+      options: {
+        secure: true,
+        sameSite: 'None',
+        domain: '.karsooghmehregan.ir',
+        httpOnly: true,
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000
+      }
+    },
+    testCookieNonHttpOnly: {
+      value: 'non-http-only-value',
+      options: {
+        secure: true,
+        sameSite: 'None',
+        domain: '.karsooghmehregan.ir',
+        httpOnly: false, // Visible to client-side JS
+        path: '/'
+      }
+    },
+    testCookieDifferentPath: {
+      value: 'path-specific-value',
+      options: {
+        secure: true,
+        sameSite: 'None',
+        domain: '.karsooghmehregan.ir',
+        path: '/api',
+        httpOnly: true
+      }
+    }
+  };
+
+  // Set all test cookies
+  Object.entries(cookiesToSet).forEach(([name, {value, options}]) => {
+    res.cookie(name, value, options);
+  });
+
+  // Respond with all cookie data
+  res.json({
+    success: true,
+    cookiesSet: Object.keys(cookiesToSet),
+    cookiesReceived: req.cookies,
+    headers: {
+      'user-agent': req.headers['user-agent'],
+      origin: req.headers.origin,
+      cookie: req.headers.cookie || 'No cookie header received'
+    },
+    connectionInfo: {
+      protocol: req.protocol,
+      secure: req.secure,
+      hostname: req.hostname,
+      ip: req.ip
+    }
+  });
+});
+
+
+
+
+
 
 const io = socketIO(server, {
   cors: {
