@@ -71,7 +71,7 @@ app.get('/api/test-cookie', (req, res) => {
 const io = socketIO(server, {
   cors: {
     origin: true,
-    credentials: true
+    credentials: true,
     methods: ["GET", "POST"],   // Allowed methods
     allowedHeaders: ["my-custom-header"],
 
