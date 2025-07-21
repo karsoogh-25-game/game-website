@@ -40,7 +40,13 @@ const sessionMiddleware = session({
   store: new SequelizeStore({ db: sequelize }),
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 }
+  cookie: { 
+    maxAge: 24 * 60 * 60 * 1000,
+    secure: true,               // Required for SameSite=None
+    sameSite: 'None',           // Allows cross-site usage
+    httpOnly: true,
+    domain: '.karsooghmehregan.ir' // Include subdomains
+  }
 });
 
 const io = socketIO(server, {
